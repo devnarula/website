@@ -1,7 +1,6 @@
 'use client';
 
 import useSWR from 'swr';
-import { Play } from 'lucide-react';
 import { SiSpotify as SpotifyIcon } from 'react-icons/si';
 import { Card, CardContent } from '@/components/ui/card';
 
