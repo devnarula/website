@@ -5,7 +5,7 @@ import matter from 'gray-matter';
 
 export interface PostMeta {
   title: string;
-  date: string;  // always a string
+  date: string; // always a string
 }
 
 export interface Post {
@@ -25,13 +25,11 @@ export function getAllSlugs(): string[] {
 
 export function getPostBySlug(slug: string): Post {
   const fullPath = path.join(BLOG_DIR, `${slug}.mdx`);
-  const source   = fs.readFileSync(fullPath, 'utf8');
+  const source = fs.readFileSync(fullPath, 'utf8');
   const { data, content } = matter(source);
 
-  const rawDate = (data.date as any);
-  const date = rawDate instanceof Date
-    ? rawDate.toISOString().split('T')[0]
-    : String(rawDate);
+  const rawDate = data.date as any;
+  const date = rawDate instanceof Date ? rawDate.toISOString().split('T')[0] : String(rawDate);
 
   return {
     slug,

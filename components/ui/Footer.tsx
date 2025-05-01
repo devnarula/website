@@ -1,7 +1,7 @@
 // components/Footer.tsx
-import Link from 'next/link'
-import { Github, Linkedin, Mail } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import Link from 'next/link';
+import { Github, Linkedin, Mail } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 export default function Footer() {
   return (
@@ -32,5 +32,5 @@ export default function Footer() {
         </div>
       </div>
     </footer>
-  )
+  );
 }

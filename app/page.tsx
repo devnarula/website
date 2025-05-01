@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Github, Linkedin, Mail, FileText, ArrowRight, ExternalLink } from 'lucide-react';
+import { Github, FileText, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -14,7 +14,6 @@ import SpotifyNowPlaying from '@/components/spotify-now-playing';
 import ExperienceSection from '@/components/ui/ExperienceSection';
 import ExperienceTimeline from '@/components/ui/ExperienceTimeline';
 import CompetitiveProgrammingStats from '@/components/ui/CPStats';
-import ThemeToggle from '@/components/ui/ThemeToggle';
 
 export default function Home() {
   const bitgoItems = [
@@ -96,56 +95,6 @@ export default function Home() {
   ];
   return (
     <div className="min-h-screen bg-background">
-      {/* <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 flex h-14 items-center justify-between">
-          <Link href="/" className="font-bold text-lg">
-            Dev Narula
-          </Link>
-          <nav className="hidden md:flex items-center space-x-8 text-sm font-medium">
-            <Link href="#about" className="transition-colors hover:text-primary">
-              About
-            </Link>
-            <Link href="#competitive" className="transition-colors hover:text-primary">
-              Competitive Programming
-            </Link>
-            <Link href="#projects" className="transition-colors hover:text-primary">
-              Projects
-            </Link>
-            <Link href="#resume" className="transition-colors hover:text-primary">
-              Resume
-            </Link>
-            <Link
-              href="https://your-quartz-blog-url.com"
-              target="_blank"
-              className="transition-colors hover:text-primary flex items-center gap-1"
-            >
-              Blog <ExternalLink className="h-3 w-3" />
-            </Link>
-          </nav>
-          <div className="flex items-center gap-2">
-            <ThemeToggle />
-            <Link href="https://github.com/devnarula" target="_blank" rel="noreferrer">
-              <Button variant="ghost" size="icon" className="rounded-full">
-                <Github className="h-4 w-4" />
-                <span className="sr-only">GitHub</span>
-              </Button>
-            </Link>
-            <Link href="https://www.linkedin.com/in/dev-narula/" target="_blank" rel="noreferrer">
-              <Button variant="ghost" size="icon" className="rounded-full">
-                <Linkedin className="h-4 w-4" />
-                <span className="sr-only">LinkedIn</span>
-              </Button>
-            </Link>
-            <Link href="mailto:d3narula@uwaterloo.ca">
-              <Button variant="ghost" size="icon" className="rounded-full">
-                <Mail className="h-4 w-4" />
-                <span className="sr-only">Email</span>
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </header> */}
-
       <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
         {/* Redesigned Hero Section */}
         <section className="py-20 md:py-32 flex flex-col">
@@ -442,34 +391,6 @@ export default function Home() {
           </div>
         </section>
       </main>
-
-      {/* <footer className="border-t py-8">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 flex flex-col items-center justify-between gap-4 md:flex-row">
-          <p className="text-center text-sm text-muted-foreground md:text-left">
-            © {new Date().getFullYear()} Dev Narula. All rights reserved.
-          </p>
-          <div className="flex items-center gap-4">
-            <Link href="https://github.com" target="_blank" rel="noreferrer">
-              <Button variant="ghost" size="icon" className="rounded-full h-9 w-9">
-                <Github className="h-4 w-4" />
-                <span className="sr-only">GitHub</span>
-              </Button>
-            </Link>
-            <Link href="https://linkedin.com" target="_blank" rel="noreferrer">
-              <Button variant="ghost" size="icon" className="rounded-full h-9 w-9">
-                <Linkedin className="h-4 w-4" />
-                <span className="sr-only">LinkedIn</span>
-              </Button>
-            </Link>
-            <Link href="mailto:your-email@example.com">
-              <Button variant="ghost" size="icon" className="rounded-full h-9 w-9">
-                <Mail className="h-4 w-4" />
-                <span className="sr-only">Email</span>
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </footer> */}
     </div>
   );
 }
