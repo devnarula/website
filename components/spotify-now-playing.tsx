@@ -42,25 +42,24 @@ export default function SpotifyNowPlaying() {
 
   return (
     <a href={url} target="_blank" rel="noopener noreferrer" className="block w-full">
-      <div className="flex items-center bg-white rounded-lg shadow p-4 hover:shadow-lg transition-shadow">
-        {/* Album art with scoped overlay */}
+      <div className="flex items-center rounded-lg shadow p-4 hover:shadow-lg transition-shadow bg-card text-card-foreground">
+        {/* Album Art */}
         <div className="relative flex-shrink-0 w-16 h-16 rounded-md overflow-hidden">
           <img src={albumArt} alt={`${title} album art`} className="w-full h-full object-cover" />
         </div>
 
-        {/* Track info */}
+        {/* Track Info */}
         <div className="flex-1 ml-4 overflow-hidden">
           <h3 className="text-base font-semibold truncate">{title}</h3>
-          <p className="text-sm text-gray-500 truncate mt-1">{artist}</p>
+          <p className="text-sm text-muted-foreground truncate mt-1">{artist}</p>
         </div>
 
-        {/* Badge + icon */}
+        {/* Badge + Spotify Icon */}
         <div className="flex flex-col items-end ml-4 space-y-1">
           <span
-            className={`
-              text-xs px-2 py-0.5 rounded-full uppercase font-medium
-              ${isPlaying ? 'bg-green-500 text-white' : 'bg-gray-300 text-gray-700'}
-            `}
+            className={`text-xs px-2 py-0.5 rounded-full uppercase font-medium ${
+              isPlaying ? 'bg-green-500 text-white' : 'bg-muted text-muted-foreground'
+            }`}
           >
             {isPlaying ? 'Now Playing' : 'Last Played'}
           </span>

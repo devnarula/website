@@ -14,6 +14,7 @@ import SpotifyNowPlaying from '@/components/spotify-now-playing';
 import ExperienceSection from '@/components/ui/ExperienceSection';
 import ExperienceTimeline from '@/components/ui/ExperienceTimeline';
 import CompetitiveProgrammingStats from '@/components/ui/CPStats';
+import ThemeToggle from '@/components/ui/ThemeToggle';
 
 export default function Home() {
   const bitgoItems = [
@@ -122,6 +123,7 @@ export default function Home() {
             </Link>
           </nav>
           <div className="flex items-center gap-2">
+            <ThemeToggle />
             <Link href="https://github.com/devnarula" target="_blank" rel="noreferrer">
               <Button variant="ghost" size="icon" className="rounded-full">
                 <Github className="h-4 w-4" />
@@ -235,8 +237,8 @@ export default function Home() {
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-muted-foreground">
-                  Built an emulator ground up in C++ to read GB gamefiles, emulate a CPU, stack and MMU model
-                  with SDL2 allowing users to run retro games.
+                  Built an emulator ground up in C++ to read GB gamefiles, emulate a CPU, stack and
+                  MMU model with SDL2 allowing users to run retro games.
                 </p>
                 <div className="flex flex-wrap gap-2 mt-4">
                   <Badge variant="secondary">C++</Badge>
@@ -245,7 +247,11 @@ export default function Home() {
                 </div>
               </CardContent>
               <CardFooter className="flex justify-between mt-auto pt-6">
-                <Link href="https://github.com/yourusername/project" target="_blank" rel="noreferrer">
+                <Link
+                  href="https://github.com/yourusername/project"
+                  target="_blank"
+                  rel="noreferrer"
+                >
                   <Button variant="outline" size="sm">
                     <Github className="mr-2 h-4 w-4" />
                     GitHub
@@ -265,8 +271,9 @@ export default function Home() {
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-muted-foreground">
-                  Built a C++ Ray Tracer ground up with Phong Reflection Model and Lua for modelling. Used Lambertian Reflection Models 
-                  for approximation and multithreading on kernel threads to improve image generation.
+                  Built a C++ Ray Tracer ground up with Phong Reflection Model and Lua for
+                  modelling. Used Lambertian Reflection Models for approximation and multithreading
+                  on kernel threads to improve image generation.
                 </p>
                 <div className="flex flex-wrap gap-2 mt-4">
                   <Badge variant="secondary">C++</Badge>
@@ -274,7 +281,11 @@ export default function Home() {
                 </div>
               </CardContent>
               <CardFooter className="flex justify-between mt-auto pt-6">
-                <Link href="https://github.com/yourusername/project" target="_blank" rel="noreferrer">
+                <Link
+                  href="https://github.com/yourusername/project"
+                  target="_blank"
+                  rel="noreferrer"
+                >
                   <Button variant="outline" size="sm">
                     <Github className="mr-2 h-4 w-4" />
                     GitHub
@@ -290,7 +301,9 @@ export default function Home() {
             <Card className="overflow-hidden border-2 hover:border-primary/50 transition-colors">
               <CardHeader>
                 <CardTitle>Optimizing Cache Policies</CardTitle>
-                <CardDescription>Research project to model policies with statistics.</CardDescription>
+                <CardDescription>
+                  Research project to model policies with statistics.
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-muted-foreground">
@@ -304,7 +317,11 @@ export default function Home() {
                 </div>
               </CardContent>
               <CardFooter className="flex justify-between mt-auto pt-6">
-                <Link href="https://github.com/yourusername/project" target="_blank" rel="noreferrer">
+                <Link
+                  href="https://github.com/yourusername/project"
+                  target="_blank"
+                  rel="noreferrer"
+                >
                   <Button variant="outline" size="sm">
                     <Github className="mr-2 h-4 w-4" />
                     GitHub
