@@ -1,4 +1,5 @@
 'use client';
+
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
@@ -8,9 +9,6 @@ import 'katex/dist/katex.min.css';
 import 'highlight.js/styles/github-dark.css';
 import { useTheme } from 'next-themes';
 import { useEffect } from 'react';
-
-// optional: import your Tailwind prose styles
-// import '@/styles/globals.css'
 
 export default function PostRenderer({ content }: { content: string }) {
   const { theme } = useTheme();
@@ -31,10 +29,44 @@ export default function PostRenderer({ content }: { content: string }) {
     link.setAttribute('data-hljs', 'true');
     link.setAttribute('href', href);
     document.head.appendChild(link);
-  }, [theme]);
+
+    // Fix for LaTeX equations on mobile
+    const fixLatexOverflow = () => {
+      // Target both inline and display math elements
+      const mathElements = document.querySelectorAll<HTMLElement>('.katex-display, .katex');
+
+      mathElements.forEach((element) => {
+        // Check if the element is wider than its container
+        const parentWidth = element.parentElement?.clientWidth || 0;
+        const elementWidth = element.scrollWidth;
+
+        if (elementWidth > parentWidth) {
+          // For display math (block equations)
+          if (element.classList.contains('katex-display')) {
+            element.style.overflowX = 'auto';
+            element.style.overflowY = 'hidden';
+            element.style.maxWidth = '90%';
+            element.style.padding = '0.5rem 0';
+          }
+          // For inline math
+          else {
+            element.classList.add('katex-inline-overflow');
+          }
+        }
+      });
+    };
+
+    // Run once after render and then on window resize
+    fixLatexOverflow();
+    window.addEventListener('resize', fixLatexOverflow);
+
+    return () => {
+      window.removeEventListener('resize', fixLatexOverflow);
+    };
+  }, [theme, content]);
 
   return (
-    <div className="prose prose-slate dark:prose-invert max-w-none">
+    <div className="prose prose-slate dark:prose-invert max-w-none latex-container">
       <ReactMarkdown
         remarkPlugins={[remarkGfm, remarkMath]}
         rehypePlugins={[rehypeKatex, rehypeHighlight]}

@@ -10,7 +10,6 @@ async function getAccessToken() {
   if (cachedToken && Date.now() < expiresAt) return cachedToken;
 
   const creds = `${process.env.CLIENT_ID}:${process.env.CLIENT_SECRET}`;
-  console.log('creds:', creds);
   const basic = Buffer.from(creds).toString('base64');
 
   const tokenRes = await fetch('https://accounts.spotify.com/api/token', {

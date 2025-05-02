@@ -1,6 +1,7 @@
 // components/Header.tsx
 import Link from 'next/link';
 import { Github, Linkedin, Mail } from 'lucide-react';
+import { BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import ThemeToggle from '@/components/ui/ThemeToggle';
 
@@ -33,6 +34,12 @@ export default function Header() {
         </nav>
         <div className="flex items-center gap-2">
           <ThemeToggle />
+          <Link href="/blog">
+            <Button variant="ghost" size="icon" className="rounded-full md:hidden">
+              <BookOpen className="h-4 w-4" />
+              <span className="sr-only">Blog</span>
+            </Button>
+          </Link>
           <Link href="https://github.com/devnarula" target="_blank" rel="noreferrer">
             <Button variant="ghost" size="icon" className="rounded-full">
               <Github className="h-4 w-4" />
