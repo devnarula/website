@@ -26,7 +26,7 @@ export default function BlogSidebar({ posts, isMobile = false, onSelect }: BlogS
     >
       {/* Header */}
       <div className="border-b px-4 py-4">
-        <h2 className="text-xl font-semibold tracking-tight">Blog</h2>
+        <h2 className="text-xl font-semibold tracking-tight">Blogs</h2>
         <p className="text-sm text-muted-foreground mt-1">Thoughts, tutorials, and insights</p>
       </div>
 
