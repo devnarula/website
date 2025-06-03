@@ -327,6 +327,13 @@ export default function Home() {
                 <ExperienceTimeline
                   items={[
                     {
+                      company: 'Meta',
+                      role: 'Software Engineering Intern',
+                      period: 'Fall 2025',
+                      logo: '/logos/meta.png?height=32&width=32',
+                      skills: ['Software Development'],
+                    },
+                    {
                       company: 'BitGo',
                       role: 'Software Engineering Intern',
                       period: 'Winter 2025',
