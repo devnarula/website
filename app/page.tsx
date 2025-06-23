@@ -1,21 +1,42 @@
 import Link from 'next/link';
-import { Github, FileText, ArrowRight } from 'lucide-react';
+import { FileText, ArrowRight, Lock, Cpu, Box} from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+
 import { Badge } from '@/components/ui/badge';
 import SpotifyNowPlaying from '@/components/spotify-now-playing';
 import ExperienceSection from '@/components/ui/ExperienceSection';
 import ExperienceTimeline from '@/components/ui/ExperienceTimeline';
 import CompetitiveProgrammingStats from '@/components/ui/CPStats';
+import ProjectCard from "@/components/project-card"
 
 export default function Home() {
+  const projects = [
+    {
+      title: "Cipher Decryption Tool",
+      description:
+        "A tool for decrypting and encrypting text using classical ciphers like Caesar, Vigenère, Substitution, and Affine.",
+      href: "/projects/cipher-tool",
+      icon: <Lock className="h-6 w-6 text-muted-foreground/70" />,
+      tags: ["Cryptography", "C++","Algorithm"],
+    },
+    {
+      title: "Optimizing Cache Policies",
+      description:
+        "Research Project to model and try to optimize cache replacement policies with Gaussian Mixture Models (Expectation-Maximization) and Bayesian Inferrence.",
+      href: "/projects/cipher-tool",
+      icon: <Cpu className="h-6 w-6 text-muted-foreground/70" />,
+      tags: ["Microarchitecture", "C++", "Cache Policies"],
+    },
+    {
+      title: "Distributed File Storage",
+      description:
+        "Developed a file storage infrastructure with a compute (C++) and storage layer (oracle cloud) allowing data encryption, chunking, metadata indexing.",
+      href: "/projects/mydrive",
+      icon: <Box className="h-6 w-6 text-muted-foreground/70" />,
+      tags: ["Distributed Systems", "Infrastructure", "C++"],
+    },
+  ];
+
   const bitgoItems = [
     'Leveraged FP-TS to orchestrate off-exchange settlements with third-party venues ensuring referential transparency, composable validation, and safe side-effect handling.',
     'Engineered a dispute resolution engine for asset trading with external exchanges validating client deposits against internal ledgers, reducing transfer errors by 40%.',
@@ -174,115 +195,18 @@ export default function Home() {
             <CompetitiveProgrammingStats platforms={platforms} />
           </div>
         </section>
-        {/* Projects Section */}
-        <section id="projects" className="py-16 border-t">
+
+            {/* Projects Section */}
+      <section id="projects" className="py-16 border-t">
+        <div className="container px-4 md:px-6">
           <h2 className="text-3xl font-bold tracking-tight mb-8">Projects</h2>
-          <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
-            {/* Project 1 */}
-            <Card className="overflow-hidden border-2 hover:border-primary/50 transition-colors">
-              <CardHeader>
-                <CardTitle>CloudBoy</CardTitle>
-                <CardDescription>Nintendo GameBoy Color Emulator</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">
-                  Built an emulator ground up in C++ to read GB gamefiles, emulate a CPU, stack and
-                  MMU model with SDL2 allowing users to run retro games.
-                </p>
-                <div className="flex flex-wrap gap-2 mt-4">
-                  <Badge variant="secondary">C++</Badge>
-                  <Badge variant="secondary">SDL2</Badge>
-                  <Badge variant="secondary">Assembly</Badge>
-                </div>
-              </CardContent>
-              <CardFooter className="flex justify-between mt-auto pt-6">
-                <Link
-                  href="https://github.com/yourusername/project"
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  <Button variant="outline" size="sm">
-                    <Github className="mr-2 h-4 w-4" />
-                    GitHub
-                  </Button>
-                </Link>
-                {/* <Link href="https://project-demo.com" target="_blank" rel="noreferrer">
-                  <Button size="sm">Live Demo</Button>
-                </Link> */}
-              </CardFooter>
-            </Card>
-
-            {/* Project 2 */}
-            <Card className="overflow-hidden border-2 hover:border-primary/50 transition-colors">
-              <CardHeader>
-                <CardTitle>Ray Tracer</CardTitle>
-                <CardDescription>C++ Ray Tracer for 3D Graphics</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">
-                  Built a C++ Ray Tracer ground up with Phong Reflection Model and Lua for
-                  modelling. Used Lambertian Reflection Models for approximation and multithreading
-                  on kernel threads to improve image generation.
-                </p>
-                <div className="flex flex-wrap gap-2 mt-4">
-                  <Badge variant="secondary">C++</Badge>
-                  <Badge variant="secondary">Lua</Badge>
-                </div>
-              </CardContent>
-              <CardFooter className="flex justify-between mt-auto pt-6">
-                <Link
-                  href="https://github.com/yourusername/project"
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  <Button variant="outline" size="sm">
-                    <Github className="mr-2 h-4 w-4" />
-                    GitHub
-                  </Button>
-                </Link>
-                {/* <Link href="https://project-demo.com" target="_blank" rel="noreferrer">
-                  <Button size="sm">Live Demo</Button>
-                </Link> */}
-              </CardFooter>
-            </Card>
-
-            {/* Project 3 */}
-            <Card className="overflow-hidden border-2 hover:border-primary/50 transition-colors">
-              <CardHeader>
-                <CardTitle>Optimizing Cache Policies</CardTitle>
-                <CardDescription>
-                  Research project to model policies with statistics.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">
-                  Research Project to model and try to optimize cache replacement policies with
-                  Gaussian Mixture Models (Expectation-Maximization) and Bayesian Inferrence.
-                </p>
-                <div className="flex flex-wrap gap-2 mt-4">
-                  <Badge variant="secondary">C++</Badge>
-                  <Badge variant="secondary">Python</Badge>
-                  <Badge variant="secondary">Statistics</Badge>
-                </div>
-              </CardContent>
-              <CardFooter className="flex justify-between mt-auto pt-6">
-                <Link
-                  href="https://github.com/yourusername/project"
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  <Button variant="outline" size="sm">
-                    <Github className="mr-2 h-4 w-4" />
-                    GitHub
-                  </Button>
-                </Link>
-                {/* <Link href="https://project-demo.com" target="_blank" rel="noreferrer">
-                  <Button size="sm">Live Demo</Button>
-                </Link> */}
-              </CardFooter>
-            </Card>
+          <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+            {projects.map((project) => (
+              <ProjectCard key={project.title} {...project} />
+            ))}
           </div>
-        </section>
+        </div>
+      </section>
 
         {/* Resume Section */}
         <section id="resume" className="py-16 border-t">
