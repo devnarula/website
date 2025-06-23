@@ -40,6 +40,27 @@ void encrypt(const string& text, string key, const string& method) {
     }
 }
 
+void decrypt(const string& text, const string& method, string key = "") {
+    if (method == "caesar") {
+        return;
+    }
+    if (method == "vigenere") {
+        return;
+    }
+    if (method == "substitution") {
+        return;
+    }
+}
+
+string cleantext(const string& s) {
+    string res = "";
+    for (auto c: s) {
+        if (c >= 'A' and c <= 'Z') res += c;
+        else if (c >= 'a' and c <= 'z') res += c;
+    }
+    return res;
+} 
+
 int main(int argc, char* argv[]) {
     unordered_map<string, string> args;
 
@@ -52,6 +73,7 @@ int main(int argc, char* argv[]) {
     string text = args["--text"];
     string keyStr = args.count("--key") ? args["--key"] : "0";
 
+    text = cleantext(text);
 
     if (op == "encrypt") {
         if (cipher == "caesar") {
