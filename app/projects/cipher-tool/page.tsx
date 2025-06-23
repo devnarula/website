@@ -2,7 +2,7 @@ import type { Metadata } from "next"
 import CipherDecryptionTool from "@/components/cipher-decryption-tool"
 
 export const metadata: Metadata = {
-  title: "Cipher Decryption Tool | Your Name",
+  title: "Cipher Decryption Tool | Dev Narula",
   description: "Decrypt text encrypted with classical ciphers like Caesar, Vigenère, Substitution, and Affine.",
 }
 
