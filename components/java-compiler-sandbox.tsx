@@ -345,7 +345,7 @@ export default function JavaCompilerSandbox() {
         <Card className="shadow-sm">
           <CardHeader>
             <CardTitle>Build Log</CardTitle>
-            <CardDescription>joosc, assembler, linker, and sandbox diagnostics.</CardDescription>
+            <CardDescription>bin/joosc, bin/nasm, bin/ld, and sandbox diagnostics.</CardDescription>
           </CardHeader>
           <CardContent>
             <pre className="min-h-[240px] whitespace-pre-wrap break-words rounded-lg bg-slate-950 p-4 font-mono text-sm leading-6 text-slate-100">
@@ -371,10 +371,10 @@ export default function JavaCompilerSandbox() {
         <Shield className="h-4 w-4" />
         <AlertTitle>Sandbox limits</AlertTitle>
         <AlertDescription>
-          Each run uses a temporary workspace, expects <code>bin/joosc</code> and
-          <code>bin/stdlib/runtime.s</code>, automatically adds <code>bin/stdlib/**/*.java</code> to the
-          <code>joosc</code> command, assembles <code>output/*.s</code>, caps output volume, and returns
-          missing-tool startup failures directly in the build log.
+          Each run uses a temporary workspace, expects <code>bin/joosc</code>, <code>bin/nasm</code>,
+          <code>bin/ld</code>, and <code>bin/stdlib/runtime.s</code>, automatically adds
+          <code>bin/stdlib/**/*.java</code> to the <code>joosc</code> command, assembles <code>output/*.s</code>,
+          caps output volume, and returns missing-tool startup failures directly in the build log.
         </AlertDescription>
       </Alert>
     </div>

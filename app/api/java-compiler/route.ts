@@ -284,10 +284,14 @@ export async function POST(request: NextRequest) {
     const files = validateRequest(body)
 
     const jooscPath = path.join(process.cwd(), "bin", "joosc")
+    const nasmPath = path.join(process.cwd(), "bin", "nasm")
+    const ldPath = path.join(process.cwd(), "bin", "ld")
     const stdlibSourceDir = path.join(process.cwd(), "bin", "stdlib")
     const runtimeSourcePath = path.join(process.cwd(), "bin", "stdlib", "runtime.s")
 
     await ensureExecutableFile(jooscPath, "joosc compiler")
+    await ensureExecutableFile(nasmPath, "nasm assembler")
+    await ensureExecutableFile(ldPath, "ld linker")
     await ensureReadableFile(runtimeSourcePath, "Runtime assembly")
 
     workspaceDir = await mkdtemp(path.join(os.tmpdir(), "joosc-sandbox-"))
@@ -366,13 +370,15 @@ export async function POST(request: NextRequest) {
     const nasmArgsPrefix = ["-O1", "-f", "elf", "-g", "-F", "dwarf"]
 
     for (const assemblyFile of assemblyFiles) {
-      const assembleResult = await runProcess("nasm", [...nasmArgsPrefix, assemblyFile], {
+      const assembleResult = await runProcess(nasmPath, [...nasmArgsPrefix, assemblyFile], {
         cwd: workspaceDir,
         env,
         timeoutMs: ASSEMBLE_TIMEOUT_MS,
       })
 
-      compilerLogSections.push(formatProcessLog("assemble", "nasm", [...nasmArgsPrefix, assemblyFile], assembleResult))
+      compilerLogSections.push(
+        formatProcessLog("assemble", nasmPath, [...nasmArgsPrefix, assemblyFile], assembleResult),
+      )
 
       if (assembleResult.spawnError) {
         return buildUserResponse(false, "assemble", compilerLog(), "", assembleResult.spawnError)
@@ -398,14 +404,14 @@ export async function POST(request: NextRequest) {
     }
 
     const runtimeAssemblyFile = path.join("stdlib", "runtime.s")
-    const runtimeAssembleResult = await runProcess("nasm", [...nasmArgsPrefix, runtimeAssemblyFile], {
+    const runtimeAssembleResult = await runProcess(nasmPath, [...nasmArgsPrefix, runtimeAssemblyFile], {
       cwd: workspaceDir,
       env,
       timeoutMs: ASSEMBLE_TIMEOUT_MS,
     })
 
     compilerLogSections.push(
-      formatProcessLog("assemble", "nasm", [...nasmArgsPrefix, runtimeAssemblyFile], runtimeAssembleResult),
+      formatProcessLog("assemble", nasmPath, [...nasmArgsPrefix, runtimeAssemblyFile], runtimeAssembleResult),
     )
 
     if (runtimeAssembleResult.spawnError) {
@@ -432,13 +438,13 @@ export async function POST(request: NextRequest) {
 
     const objectFiles = assemblyFiles.map((assemblyFile) => assemblyFile.replace(/\.s$/i, ".o"))
     const linkArgs = ["-melf_i386", "-o", EXECUTABLE_NAME, ...objectFiles, path.join("stdlib", "runtime.o")]
-    const linkResult = await runProcess("ld", linkArgs, {
+    const linkResult = await runProcess(ldPath, linkArgs, {
       cwd: workspaceDir,
       env,
       timeoutMs: LINK_TIMEOUT_MS,
     })
 
-    compilerLogSections.push(formatProcessLog("link", "ld", linkArgs, linkResult))
+    compilerLogSections.push(formatProcessLog("link", ldPath, linkArgs, linkResult))
 
     if (linkResult.spawnError) {
       return buildUserResponse(false, "link", compilerLog(), "", linkResult.spawnError)

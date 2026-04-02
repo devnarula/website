@@ -22,8 +22,8 @@ export default function JavaCompilerPage() {
           <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
             Create multiple <code className="rounded bg-muted px-1.5 py-0.5 text-sm">.java</code> files and run a
             server-side toolchain of <code className="rounded bg-muted px-1.5 py-0.5 text-sm">bin/joosc</code>,
-            <code className="rounded bg-muted px-1.5 py-0.5 text-sm">nasm</code>, and
-            <code className="rounded bg-muted px-1.5 py-0.5 text-sm">ld</code> inside an isolated temp workspace.
+            <code className="rounded bg-muted px-1.5 py-0.5 text-sm">bin/nasm</code>, and
+            <code className="rounded bg-muted px-1.5 py-0.5 text-sm">bin/ld</code> inside an isolated temp workspace.
           </p>
           <p className="text-sm text-muted-foreground max-w-3xl mx-auto">
             The build expects <code className="rounded bg-muted px-1.5 py-0.5 text-sm">bin/joosc</code> plus
