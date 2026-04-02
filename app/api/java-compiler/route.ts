@@ -1,9 +1,10 @@
 import { constants as fsConstants } from "fs"
 import { spawn } from "child_process"
-import { access, copyFile, mkdir, mkdtemp, readdir, rm, writeFile } from "fs/promises"
+import { access, copyFile, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "fs/promises"
 import os from "os"
 import path from "path"
 import { type NextRequest, NextResponse } from "next/server"
+import type { JavaCompilerAssemblyFile } from "@/lib/java-compiler-storage"
 
 export const runtime = "nodejs"
 
@@ -11,16 +12,13 @@ const MAX_FILES = 8
 const MAX_FILE_SIZE = 20_000
 const MAX_TOTAL_SIZE = 100_000
 const MAX_OUTPUT_CHARS = 40_000
+const MAX_ASSEMBLY_TOTAL_SIZE = 300_000
 const JOOSC_TIMEOUT_MS = 6_000
-const ASSEMBLE_TIMEOUT_MS = 6_000
-const LINK_TIMEOUT_MS = 6_000
-const RUN_TIMEOUT_MS = 3_000
 const JAVA_FILE_NAME_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*\.java$/
 const PACKAGE_PATTERN = /(^|\s)package\s+[A-Za-z_][A-Za-z0-9_.]*\s*;/
 const OUTPUT_DIRECTORY = "output"
-const EXECUTABLE_NAME = "main"
 
-type BuildStage = "validation" | "compile" | "assemble" | "link" | "run"
+type BuildStage = "validation" | "compile"
 
 interface SourceFile {
   name: string
@@ -44,9 +42,6 @@ class ValidationError extends Error {}
 
 const normalizeOutput = (value: string) => value.replace(/\r\n?/g, "\n").trim()
 
-const combineOutput = (stdout: string, stderr: string) =>
-  [normalizeOutput(stdout), normalizeOutput(stderr)].filter(Boolean).join("\n")
-
 const formatCommand = (command: string, args: string[]) => `$ ${[command, ...args].join(" ")}`
 
 const formatProcessLog = (label: string, command: string, args: string[], result: ProcessResult) =>
@@ -63,14 +58,14 @@ const buildUserResponse = (
   success: boolean,
   stage: BuildStage,
   compilerLog: string,
-  programOutput: string,
+  assemblyFiles: JavaCompilerAssemblyFile[],
   error?: string,
 ) =>
   NextResponse.json({
     success,
     stage,
     compilerLog,
-    programOutput,
+    assemblyFiles,
     error,
   })
 
@@ -124,6 +119,7 @@ function validateRequest(body: CompilerRequest): SourceFile[] {
     }
 
     totalSize += content.length
+
     return { name, content }
   })
 
@@ -184,11 +180,53 @@ async function findJavaFilesRecursive(rootDir: string, relativeDir = ""): Promis
     }
 
     if (entry.isFile() && entry.name.endsWith(".java")) {
-      javaFiles.push(nextRelativePath)
+      javaFiles.push(nextRelativePath.split(path.sep).join("/"))
     }
   }
 
   return javaFiles.sort()
+}
+
+async function collectAssemblyFilesRecursive(
+  rootDir: string,
+  relativeDir = "",
+): Promise<JavaCompilerAssemblyFile[]> {
+  const currentDirectory = path.join(rootDir, relativeDir)
+  const entries = await readdir(currentDirectory, { withFileTypes: true })
+  const assemblyFiles: JavaCompilerAssemblyFile[] = []
+
+  for (const entry of entries) {
+    const nextRelativePath = path.join(relativeDir, entry.name)
+
+    if (entry.isDirectory()) {
+      assemblyFiles.push(...(await collectAssemblyFilesRecursive(rootDir, nextRelativePath)))
+      continue
+    }
+
+    if (entry.isFile() && entry.name.endsWith(".s")) {
+      const content = await readFile(path.join(rootDir, nextRelativePath), "utf8")
+      assemblyFiles.push({
+        path: nextRelativePath.split(path.sep).join("/"),
+        content,
+      })
+    }
+  }
+
+  return assemblyFiles.sort((left, right) => left.path.localeCompare(right.path))
+}
+
+function describeSpawnError(command: string, error: Error & { code?: string; errno?: number }) {
+  const prefix = `Failed to start ${path.basename(command)}`
+
+  if (error.code === "ENOENT") {
+    return `${prefix}: command not found or not bundled for this deployment.`
+  }
+
+  if (error.code === "ENOEXEC" || error.errno === -8) {
+    return `${prefix}: incompatible executable format or runtime library mismatch.`
+  }
+
+  return `${prefix}: ${error.message}`
 }
 
 function runProcess(
@@ -201,11 +239,26 @@ function runProcess(
   },
 ): Promise<ProcessResult> {
   return new Promise((resolve) => {
-    const child = spawn(command, args, {
-      cwd: options.cwd,
-      env: options.env,
-      stdio: ["ignore", "pipe", "pipe"],
-    })
+    let child
+
+    try {
+      child = spawn(command, args, {
+        cwd: options.cwd,
+        env: options.env,
+        stdio: ["ignore", "pipe", "pipe"],
+      })
+    } catch (spawnError) {
+      const error = spawnError as Error & { code?: string; errno?: number }
+      resolve({
+        stdout: "",
+        stderr: "",
+        exitCode: null,
+        timedOut: false,
+        outputLimitExceeded: false,
+        spawnError: describeSpawnError(command, error),
+      })
+      return
+    }
 
     let stdout = ""
     let stderr = ""
@@ -242,14 +295,14 @@ function runProcess(
     child.stdout.on("data", (chunk) => appendChunk("stdout", chunk.toString("utf8")))
     child.stderr.on("data", (chunk) => appendChunk("stderr", chunk.toString("utf8")))
 
-    child.on("error", (error) => {
+    child.on("error", (runtimeError: Error & { code?: string; errno?: number }) => {
       finish({
         stdout,
         stderr,
         exitCode: null,
         timedOut: false,
         outputLimitExceeded: false,
-        spawnError: `Failed to start ${path.basename(command)}: ${error.message}`,
+        spawnError: describeSpawnError(command, runtimeError),
       })
     })
 
@@ -284,14 +337,10 @@ export async function POST(request: NextRequest) {
     const files = validateRequest(body)
 
     const jooscPath = path.join(process.cwd(), "bin", "joosc")
-    const nasmPath = path.join(process.cwd(), "bin", "nasm")
-    const ldPath = path.join(process.cwd(), "bin", "ld")
     const stdlibSourceDir = path.join(process.cwd(), "bin", "stdlib")
     const runtimeSourcePath = path.join(process.cwd(), "bin", "stdlib", "runtime.s")
 
     await ensureExecutableFile(jooscPath, "joosc compiler")
-    await ensureExecutableFile(nasmPath, "nasm assembler")
-    await ensureExecutableFile(ldPath, "ld linker")
     await ensureReadableFile(runtimeSourcePath, "Runtime assembly")
 
     workspaceDir = await mkdtemp(path.join(os.tmpdir(), "joosc-sandbox-"))
@@ -302,9 +351,7 @@ export async function POST(request: NextRequest) {
     await copyDirectoryRecursive(stdlibSourceDir, workspaceStdlibDir)
 
     const stdlibJavaFiles = await findJavaFilesRecursive(workspaceDir, "stdlib")
-
     const env = sanitizeEnvironment(workspaceDir)
-    const compilerLogSections: string[] = []
 
     const jooscArgs = [...files.map((file) => file.name), ...stdlibJavaFiles]
     const compileResult = await runProcess(jooscPath, jooscArgs, {
@@ -313,46 +360,40 @@ export async function POST(request: NextRequest) {
       timeoutMs: JOOSC_TIMEOUT_MS,
     })
 
-    compilerLogSections.push(formatProcessLog("compile", jooscPath, jooscArgs, compileResult))
-
-    const compilerLog = () => compilerLogSections.filter(Boolean).join("\n\n")
+    const compilerLog = formatProcessLog("compile", jooscPath, jooscArgs, compileResult)
 
     if (compileResult.spawnError) {
-      return buildUserResponse(false, "compile", compilerLog(), "", compileResult.spawnError)
+      return buildUserResponse(false, "compile", compilerLog, [], compileResult.spawnError)
     }
 
     if (compileResult.timedOut) {
       return buildUserResponse(
         false,
         "compile",
-        compilerLog(),
-        "",
+        compilerLog,
+        [],
         `joosc timed out after ${JOOSC_TIMEOUT_MS / 1000} seconds.`,
       )
     }
 
     if (compileResult.outputLimitExceeded) {
-      return buildUserResponse(false, "compile", compilerLog(), "", "joosc produced too much output for the sandbox.")
+      return buildUserResponse(false, "compile", compilerLog, [], "joosc produced too much output for the sandbox.")
     }
 
     if (compileResult.exitCode !== 0) {
-      return buildUserResponse(false, "compile", compilerLog(), "", "joosc compilation failed.")
+      return buildUserResponse(false, "compile", compilerLog, [], "joosc compilation failed.")
     }
 
-    const assemblyOutputDir = path.join(workspaceDir, OUTPUT_DIRECTORY)
-    let assemblyFiles: string[]
+    let assemblyFiles: JavaCompilerAssemblyFile[]
 
     try {
-      assemblyFiles = (await readdir(assemblyOutputDir))
-        .filter((fileName) => fileName.endsWith(".s"))
-        .sort()
-        .map((fileName) => path.join(OUTPUT_DIRECTORY, fileName))
+      assemblyFiles = await collectAssemblyFilesRecursive(workspaceDir, OUTPUT_DIRECTORY)
     } catch {
       return buildUserResponse(
         false,
         "compile",
-        compilerLog(),
-        "",
+        compilerLog,
+        [],
         "joosc completed without creating the expected output directory.",
       )
     }
@@ -361,166 +402,37 @@ export async function POST(request: NextRequest) {
       return buildUserResponse(
         false,
         "compile",
-        compilerLog(),
-        "",
+        compilerLog,
+        [],
         "joosc completed without generating any output/*.s files.",
       )
     }
 
-    const nasmArgsPrefix = ["-O1", "-f", "elf", "-g", "-F", "dwarf"]
+    const totalAssemblySize = assemblyFiles.reduce((total, file) => total + file.content.length, 0)
 
-    for (const assemblyFile of assemblyFiles) {
-      const assembleResult = await runProcess(nasmPath, [...nasmArgsPrefix, assemblyFile], {
-        cwd: workspaceDir,
-        env,
-        timeoutMs: ASSEMBLE_TIMEOUT_MS,
-      })
-
-      compilerLogSections.push(
-        formatProcessLog("assemble", nasmPath, [...nasmArgsPrefix, assemblyFile], assembleResult),
-      )
-
-      if (assembleResult.spawnError) {
-        return buildUserResponse(false, "assemble", compilerLog(), "", assembleResult.spawnError)
-      }
-
-      if (assembleResult.timedOut) {
-        return buildUserResponse(
-          false,
-          "assemble",
-          compilerLog(),
-          "",
-          `Assembler timed out on ${assemblyFile} after ${ASSEMBLE_TIMEOUT_MS / 1000} seconds.`,
-        )
-      }
-
-      if (assembleResult.outputLimitExceeded) {
-        return buildUserResponse(false, "assemble", compilerLog(), "", "Assembler output exceeded the sandbox limit.")
-      }
-
-      if (assembleResult.exitCode !== 0) {
-        return buildUserResponse(false, "assemble", compilerLog(), "", `Assembler failed for ${assemblyFile}.`)
-      }
-    }
-
-    const runtimeAssemblyFile = path.join("stdlib", "runtime.s")
-    const runtimeAssembleResult = await runProcess(nasmPath, [...nasmArgsPrefix, runtimeAssemblyFile], {
-      cwd: workspaceDir,
-      env,
-      timeoutMs: ASSEMBLE_TIMEOUT_MS,
-    })
-
-    compilerLogSections.push(
-      formatProcessLog("assemble", nasmPath, [...nasmArgsPrefix, runtimeAssemblyFile], runtimeAssembleResult),
-    )
-
-    if (runtimeAssembleResult.spawnError) {
-      return buildUserResponse(false, "assemble", compilerLog(), "", runtimeAssembleResult.spawnError)
-    }
-
-    if (runtimeAssembleResult.timedOut) {
+    if (totalAssemblySize > MAX_ASSEMBLY_TOTAL_SIZE) {
       return buildUserResponse(
         false,
-        "assemble",
-        compilerLog(),
-        "",
-        `Assembler timed out on ${runtimeAssemblyFile} after ${ASSEMBLE_TIMEOUT_MS / 1000} seconds.`,
+        "compile",
+        compilerLog,
+        [],
+        "Generated assembly is too large to store in the browser session.",
       )
     }
 
-    if (runtimeAssembleResult.outputLimitExceeded) {
-      return buildUserResponse(false, "assemble", compilerLog(), "", "Assembler output exceeded the sandbox limit.")
-    }
-
-    if (runtimeAssembleResult.exitCode !== 0) {
-      return buildUserResponse(false, "assemble", compilerLog(), "", "Assembler failed for stdlib/runtime.s.")
-    }
-
-    const objectFiles = assemblyFiles.map((assemblyFile) => assemblyFile.replace(/\.s$/i, ".o"))
-    const linkArgs = ["-melf_i386", "-o", EXECUTABLE_NAME, ...objectFiles, path.join("stdlib", "runtime.o")]
-    const linkResult = await runProcess(ldPath, linkArgs, {
-      cwd: workspaceDir,
-      env,
-      timeoutMs: LINK_TIMEOUT_MS,
-    })
-
-    compilerLogSections.push(formatProcessLog("link", ldPath, linkArgs, linkResult))
-
-    if (linkResult.spawnError) {
-      return buildUserResponse(false, "link", compilerLog(), "", linkResult.spawnError)
-    }
-
-    if (linkResult.timedOut) {
-      return buildUserResponse(false, "link", compilerLog(), "", `Linker timed out after ${LINK_TIMEOUT_MS / 1000} seconds.`)
-    }
-
-    if (linkResult.outputLimitExceeded) {
-      return buildUserResponse(false, "link", compilerLog(), "", "Linker output exceeded the sandbox limit.")
-    }
-
-    if (linkResult.exitCode !== 0) {
-      return buildUserResponse(false, "link", compilerLog(), "", "Linker failed.")
-    }
-
-    const executablePath = path.join(workspaceDir, EXECUTABLE_NAME)
-    const runResult = await runProcess(executablePath, [], {
-      cwd: workspaceDir,
-      env,
-      timeoutMs: RUN_TIMEOUT_MS,
-    })
-
-    if (runResult.spawnError) {
-      return buildUserResponse(false, "run", compilerLog(), "", runResult.spawnError)
-    }
-
-    if (runResult.timedOut) {
-      return buildUserResponse(
-        false,
-        "run",
-        compilerLog(),
-        combineOutput(runResult.stdout, runResult.stderr) || "Program execution timed out.",
-        `Program execution timed out after ${RUN_TIMEOUT_MS / 1000} seconds.`,
-      )
-    }
-
-    if (runResult.outputLimitExceeded) {
-      return buildUserResponse(
-        false,
-        "run",
-        compilerLog(),
-        combineOutput(runResult.stdout, runResult.stderr) || "Program output exceeded the sandbox limit.",
-        "Program output exceeded the sandbox limit.",
-      )
-    }
-
-    if (runResult.exitCode !== 0) {
-      return buildUserResponse(
-        false,
-        "run",
-        compilerLog(),
-        combineOutput(runResult.stdout, runResult.stderr) || "Program exited with an error.",
-        "Program exited with an error.",
-      )
-    }
-
-    return buildUserResponse(
-      true,
-      "run",
-      compilerLog() || "Build successful.",
-      combineOutput(runResult.stdout, runResult.stderr) || "Program exited without output.",
-    )
+    return buildUserResponse(true, "compile", compilerLog, assemblyFiles)
   } catch (error) {
     if (error instanceof ValidationError) {
-      return buildUserResponse(false, "validation", error.message, "", error.message)
+      return buildUserResponse(false, "validation", error.message, [], error.message)
     }
 
     console.error("joosc compiler API error:", error)
     return NextResponse.json(
       {
         success: false,
-        stage: "run",
+        stage: "compile",
         compilerLog: "",
-        programOutput: "",
+        assemblyFiles: [],
         error: "The compiler service is unavailable right now.",
       },
       { status: 500 },

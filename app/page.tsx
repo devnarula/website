@@ -30,7 +30,7 @@ export default function Home() {
     {
       title: "Java 1.3 Compiler",
       description:
-        "A sandboxed multi-file Java workspace that runs a joosc compiler pipeline and shows assembler, linker, and program output in the browser workflow.",
+        "A sandboxed multi-file Java workspace that compiles with joosc and lets you browse generated assembly files in a dedicated explorer view.",
       href: "/projects/java-compiler",
       icon: <FileCode2 className="h-6 w-6 text-muted-foreground/70" />,
       tags: ["Java", "joosc", "Compiler"],

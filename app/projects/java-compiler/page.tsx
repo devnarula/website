@@ -5,7 +5,7 @@ import JavaCompilerSandbox from "@/components/java-compiler-sandbox"
 export const metadata: Metadata = {
   title: "Java 1.3 Compiler | Dev Narula",
   description:
-    "Write multiple Java source files, compile them with joosc, assemble and link the emitted output, and run the generated binary inside an isolated sandbox.",
+    "Write multiple Java source files, compile them with joosc, and browse the generated assembly tree in a file explorer-style viewer.",
 }
 
 export default function JavaCompilerPage() {
@@ -15,15 +15,15 @@ export default function JavaCompilerPage() {
         <div className="flex flex-wrap items-center justify-center gap-2">
           <Badge variant="secondary">Multi-file workspace</Badge>
           <Badge variant="secondary">joosc pipeline</Badge>
-          <Badge variant="secondary">nasm + ld</Badge>
+          <Badge variant="secondary">Assembly viewer</Badge>
         </div>
         <div className="space-y-3">
           <h1 className="text-3xl md:text-4xl font-bold">Java 1.3 Compiler</h1>
           <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
             Create multiple <code className="rounded bg-muted px-1.5 py-0.5 text-sm">.java</code> files and run a
-            server-side toolchain of <code className="rounded bg-muted px-1.5 py-0.5 text-sm">bin/joosc</code>,
-            <code className="rounded bg-muted px-1.5 py-0.5 text-sm">bin/nasm</code>, and
-            <code className="rounded bg-muted px-1.5 py-0.5 text-sm">bin/ld</code> inside an isolated temp workspace.
+            server-side <code className="rounded bg-muted px-1.5 py-0.5 text-sm">bin/joosc</code> compile inside an
+            isolated temp workspace, then inspect the generated <code className="rounded bg-muted px-1.5 py-0.5 text-sm">output/**/*.s</code> files
+            in a dedicated explorer-style viewer.
           </p>
           <p className="text-sm text-muted-foreground max-w-3xl mx-auto">
             The build expects <code className="rounded bg-muted px-1.5 py-0.5 text-sm">bin/joosc</code> plus

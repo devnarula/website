@@ -1,10 +1,12 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
 import {
   AlertCircle,
   CheckCircle2,
   FileCode2,
+  FolderTree,
   Loader2,
   Play,
   Plus,
@@ -20,19 +22,19 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
+import {
+  JAVA_COMPILER_ASSEMBLY_STORAGE_KEY,
+  JAVA_COMPILER_DRAFT_STORAGE_KEY,
+  type JavaCompilerAssemblySession,
+  type JavaCompilerDraft,
+  type JavaCompilerResponse,
+  type JavaCompilerSourceFile,
+  parseJavaCompilerAssemblySession,
+  parseJavaCompilerDraft,
+} from "@/lib/java-compiler-storage"
 
-interface SourceFile {
+interface SourceFile extends JavaCompilerSourceFile {
   id: string
-  name: string
-  content: string
-}
-
-interface CompilerResponse {
-  success: boolean
-  stage: "validation" | "compile" | "assemble" | "link" | "run"
-  error?: string
-  compilerLog: string
-  programOutput: string
 }
 
 const MAX_FILES = 8
@@ -79,16 +81,95 @@ const createFileTemplate = (fileName: string) => {
 `
 }
 
+const toSourceFiles = (files: SourceFile[]): JavaCompilerSourceFile[] =>
+  files.map(({ name, content }) => ({ name, content }))
+
+const fromSourceFiles = (files: JavaCompilerSourceFile[]): SourceFile[] =>
+  files.map((file) => ({
+    id: createFileId(),
+    name: file.name,
+    content: file.content,
+  }))
+
+function clearAssemblySessionStorage() {
+  try {
+    window.sessionStorage.removeItem(JAVA_COMPILER_ASSEMBLY_STORAGE_KEY)
+  } catch {
+    // Ignore browser storage failures and keep the editor usable.
+  }
+}
+
+function saveDraftToStorage(files: SourceFile[], activeFileId: string) {
+  try {
+    const activeFileName = files.find((file) => file.id === activeFileId)?.name ?? files[0]?.name
+    const draft: JavaCompilerDraft = {
+      files: toSourceFiles(files),
+      activeFileName,
+      savedAt: new Date().toISOString(),
+    }
+    window.localStorage.setItem(JAVA_COMPILER_DRAFT_STORAGE_KEY, JSON.stringify(draft))
+  } catch {
+    // Ignore browser storage failures and keep the editor usable.
+  }
+}
+
+function saveAssemblySessionToStorage(files: SourceFile[], response: JavaCompilerResponse) {
+  const session: JavaCompilerAssemblySession = {
+    sourceFiles: toSourceFiles(files),
+    assemblyFiles: response.assemblyFiles,
+    compilerLog: response.compilerLog,
+    generatedAt: new Date().toISOString(),
+  }
+
+  window.sessionStorage.setItem(JAVA_COMPILER_ASSEMBLY_STORAGE_KEY, JSON.stringify(session))
+}
+
 export default function JavaCompilerSandbox() {
+  const router = useRouter()
   const [files, setFiles] = useState<SourceFile[]>(() => createStarterFiles())
   const [activeFileId, setActiveFileId] = useState("main")
   const [newFileName, setNewFileName] = useState("Helper.java")
   const [isRunning, setIsRunning] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [result, setResult] = useState<CompilerResponse | null>(null)
+  const [result, setResult] = useState<JavaCompilerResponse | null>(null)
+  const [isDraftLoaded, setIsDraftLoaded] = useState(false)
+  const [hasStoredAssembly, setHasStoredAssembly] = useState(false)
 
   const activeFile = files.find((file) => file.id === activeFileId) ?? files[0]
+
+  useEffect(() => {
+    const draft = parseJavaCompilerDraft(window.localStorage.getItem(JAVA_COMPILER_DRAFT_STORAGE_KEY))
+    const assemblySession = parseJavaCompilerAssemblySession(
+      window.sessionStorage.getItem(JAVA_COMPILER_ASSEMBLY_STORAGE_KEY),
+    )
+
+    if (draft && draft.files.length > 0) {
+      const restoredFiles = fromSourceFiles(draft.files)
+      const restoredActiveFile =
+        restoredFiles.find((file) => file.name === draft.activeFileName) ?? restoredFiles[0]
+
+      setFiles(restoredFiles)
+      setActiveFileId(restoredActiveFile.id)
+    }
+
+    setHasStoredAssembly(Boolean(assemblySession && assemblySession.assemblyFiles.length > 0))
+    setIsDraftLoaded(true)
+  }, [])
+
+  useEffect(() => {
+    if (!isDraftLoaded) {
+      return
+    }
+
+    saveDraftToStorage(files, activeFileId)
+  }, [activeFileId, files, isDraftLoaded])
+
+  const invalidateCompiledAssembly = () => {
+    setResult(null)
+    setHasStoredAssembly(false)
+    clearAssemblySessionStorage()
+  }
 
   const handleCreateFile = () => {
     const trimmedName = newFileName.trim()
@@ -124,7 +205,7 @@ export default function JavaCompilerSandbox() {
     setNewFileName("")
     setMessage(`Added ${trimmedName}.`)
     setError(null)
-    setResult(null)
+    invalidateCompiledAssembly()
   }
 
   const handleDeleteFile = (fileId: string) => {
@@ -147,30 +228,34 @@ export default function JavaCompilerSandbox() {
     if (fileToDelete) {
       setMessage(`Removed ${fileToDelete.name}.`)
     }
+
     setError(null)
-    setResult(null)
+    invalidateCompiledAssembly()
   }
 
   const updateActiveFileContent = (content: string) => {
     setFiles((currentFiles) =>
       currentFiles.map((file) => (file.id === activeFile?.id ? { ...file, content } : file)),
     )
+    setError(null)
+    invalidateCompiledAssembly()
   }
 
   const handleReset = () => {
-    setFiles(createStarterFiles())
-    setActiveFileId("main")
+    const starterFiles = createStarterFiles()
+    setFiles(starterFiles)
+    setActiveFileId(starterFiles[0].id)
     setNewFileName("Helper.java")
     setMessage("Workspace reset to the sample project.")
     setError(null)
-    setResult(null)
+    invalidateCompiledAssembly()
   }
 
   const handleCompile = async () => {
     setIsRunning(true)
     setError(null)
     setMessage(null)
-    setResult(null)
+    invalidateCompiledAssembly()
 
     try {
       const response = await fetch("/api/java-compiler", {
@@ -179,11 +264,11 @@ export default function JavaCompilerSandbox() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          files: files.map(({ name, content }) => ({ name, content })),
+          files: toSourceFiles(files),
         }),
       })
 
-      const data = (await response.json()) as CompilerResponse
+      const data = (await response.json()) as JavaCompilerResponse
 
       if (!response.ok) {
         throw new Error(data.error || "The compiler service failed.")
@@ -191,10 +276,18 @@ export default function JavaCompilerSandbox() {
 
       setResult(data)
 
-      if (data.success) {
-        setMessage("Built and ran the joosc pipeline successfully.")
-      } else {
+      if (!data.success) {
         setError(data.error || `The ${data.stage} step failed.`)
+        return
+      }
+
+      try {
+        saveAssemblySessionToStorage(files, data)
+        setHasStoredAssembly(true)
+        setMessage(`Generated ${data.assemblyFiles.length} assembly file${data.assemblyFiles.length === 1 ? "" : "s"}.`)
+      } catch {
+        setHasStoredAssembly(false)
+        setError("Compilation succeeded, but the browser could not store the generated assembly for viewing.")
       }
     } catch (compileError) {
       setError(compileError instanceof Error ? compileError.message : "The compiler service failed.")
@@ -203,12 +296,18 @@ export default function JavaCompilerSandbox() {
     }
   }
 
+  const handleViewAssembly = () => {
+    router.push("/projects/java-compiler/assembly")
+  }
+
+  const generatedAssemblyCount = result?.assemblyFiles.length ?? 0
+
   return (
     <div className="space-y-6">
       {(error || message) && (
         <Alert variant={error ? "destructive" : "default"}>
           {error ? <AlertCircle className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />}
-          <AlertTitle>{error ? "Sandbox issue" : "Workspace updated"}</AlertTitle>
+          <AlertTitle>{error ? "Compiler issue" : "Workspace updated"}</AlertTitle>
           <AlertDescription>{error ?? message}</AlertDescription>
         </Alert>
       )}
@@ -220,7 +319,7 @@ export default function JavaCompilerSandbox() {
               <div className="border-b px-4 py-4">
                 <p className="text-sm font-semibold">Workspace Files</p>
                 <p className="text-sm text-muted-foreground">
-                  Create up to {MAX_FILES} source files in a single isolated project.
+                  Create up to {MAX_FILES} source files. Drafts are saved in your browser automatically.
                 </p>
               </div>
 
@@ -284,13 +383,13 @@ export default function JavaCompilerSandbox() {
                     <div className="mt-2 flex flex-wrap items-center gap-2">
                       <Badge variant="outline">{activeFile?.name ?? "No file selected"}</Badge>
                       <Badge variant="outline">Default package only</Badge>
-                      <Badge variant="outline">output/*.s expected</Badge>
+                      <Badge variant="outline">Assembly output under output/</Badge>
                     </div>
                   </div>
 
                   <div className="rounded-lg border bg-background px-3 py-2">
                     <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Pipeline</p>
-                    <p className="mt-1 text-sm font-medium">joosc -&gt; nasm -&gt; ld -&gt; ./main</p>
+                    <p className="mt-1 text-sm font-medium">bin/joosc -&gt; output/**/*.s</p>
                   </div>
 
                   <Button type="button" className="w-full xl:w-auto" onClick={handleCompile} disabled={isRunning}>
@@ -302,7 +401,7 @@ export default function JavaCompilerSandbox() {
                     ) : (
                       <>
                         <Play className="h-4 w-4" />
-                        Compile & Run
+                        Compile to Assembly
                       </>
                     )}
                   </Button>
@@ -323,7 +422,7 @@ export default function JavaCompilerSandbox() {
               <div className="border-b px-4 py-3">
                 <p className="text-sm font-semibold">{activeFile?.name ?? "Source file"}</p>
                 <p className="text-sm text-muted-foreground">
-                  Write joosc-compatible Java source here, then build the entire workspace through the server-side toolchain.
+                  Write joosc-compatible Java source here, compile it, then inspect the generated assembly in the viewer.
                 </p>
               </div>
 
@@ -345,36 +444,62 @@ export default function JavaCompilerSandbox() {
         <Card className="shadow-sm">
           <CardHeader>
             <CardTitle>Build Log</CardTitle>
-            <CardDescription>bin/joosc, bin/nasm, bin/ld, and sandbox diagnostics.</CardDescription>
+            <CardDescription>bin/joosc output and compile diagnostics.</CardDescription>
           </CardHeader>
           <CardContent>
             <pre className="min-h-[240px] whitespace-pre-wrap break-words rounded-lg bg-slate-950 p-4 font-mono text-sm leading-6 text-slate-100">
-              {result?.compilerLog ?? "Build the workspace to see joosc, nasm, and ld output here."}
+              {result?.compilerLog ?? "Compile the workspace to see joosc output here."}
             </pre>
           </CardContent>
         </Card>
 
         <Card className="shadow-sm">
           <CardHeader>
-            <CardTitle>Program Output</CardTitle>
-            <CardDescription>Combined console output from the generated executable.</CardDescription>
+            <CardTitle>Generated Assembly</CardTitle>
+            <CardDescription>Open the explorer page to browse the latest generated assembly tree.</CardDescription>
           </CardHeader>
-          <CardContent>
-            <pre className="min-h-[240px] whitespace-pre-wrap break-words rounded-lg bg-slate-950 p-4 font-mono text-sm leading-6 text-slate-100">
-              {result?.programOutput ?? "Program output appears here after a successful run."}
-            </pre>
+          <CardContent className="space-y-4">
+            {generatedAssemblyCount > 0 ? (
+              <>
+                <div className="flex items-center justify-between gap-4 rounded-lg border bg-muted/20 px-4 py-3">
+                  <div>
+                    <p className="text-sm font-semibold">{generatedAssemblyCount} file{generatedAssemblyCount === 1 ? "" : "s"} ready</p>
+                    <p className="text-sm text-muted-foreground">
+                      Stored in this tab's session for the assembly viewer.
+                    </p>
+                  </div>
+                  <Button type="button" onClick={handleViewAssembly} disabled={!hasStoredAssembly}>
+                    <FolderTree className="h-4 w-4" />
+                    View Assembly
+                  </Button>
+                </div>
+
+                <div className="space-y-2">
+                  {result?.assemblyFiles.slice(0, 6).map((file) => (
+                    <div
+                      key={file.path}
+                      className="rounded-md border px-3 py-2 font-mono text-sm text-muted-foreground"
+                    >
+                      {file.path}
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div className="rounded-lg border border-dashed px-4 py-6 text-sm text-muted-foreground">
+                Compile the workspace to generate `output/**/*.s` files and open them in the assembly viewer.
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
 
       <Alert>
         <Shield className="h-4 w-4" />
-        <AlertTitle>Sandbox limits</AlertTitle>
+        <AlertTitle>Browser persistence</AlertTitle>
         <AlertDescription>
-          Each run uses a temporary workspace, expects <code>bin/joosc</code>, <code>bin/nasm</code>,
-          <code>bin/ld</code>, and <code>bin/stdlib/runtime.s</code>, automatically adds
-          <code>bin/stdlib/**/*.java</code> to the <code>joosc</code> command, assembles <code>output/*.s</code>,
-          caps output volume, and returns missing-tool startup failures directly in the build log.
+          Java source files are stored in <code>localStorage</code> so drafts survive refreshes. The latest generated
+          assembly tree is stored in <code>sessionStorage</code> for the dedicated viewer page in this tab.
         </AlertDescription>
       </Alert>
     </div>
