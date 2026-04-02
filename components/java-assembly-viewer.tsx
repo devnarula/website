@@ -14,10 +14,10 @@ import {
   Folder,
   FolderOpen,
 } from "lucide-react"
+import MonacoCodeSurface from "@/components/monaco-code-surface"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   JAVA_COMPILER_ASSEMBLY_STORAGE_KEY,
   type JavaCompilerAssemblyFile,
@@ -42,7 +42,9 @@ function buildFileTree(files: JavaCompilerAssemblyFile[]): TreeNode[] {
     parts.forEach((part, index) => {
       const currentPath = parts.slice(0, index + 1).join("/")
       const isFile = index === parts.length - 1
-      let nextNode = currentNode.children.find((child) => child.name === part && child.kind === (isFile ? "file" : "directory"))
+      let nextNode = currentNode.children.find(
+        (child) => child.name === part && child.kind === (isFile ? "file" : "directory"),
+      )
 
       if (!nextNode) {
         nextNode = {
@@ -88,6 +90,10 @@ function collectDirectoryPaths(nodes: TreeNode[]): string[] {
   return paths
 }
 
+function getLineCount(content: string) {
+  return content.split("\n").length
+}
+
 export default function JavaAssemblyViewer() {
   const [sessionData, setSessionData] = useState<JavaCompilerAssemblySession | null>(null)
   const [selectedPath, setSelectedPath] = useState<string | null>(null)
@@ -112,6 +118,7 @@ export default function JavaAssemblyViewer() {
 
   const fileTree = useMemo(() => buildFileTree(sessionData?.assemblyFiles ?? []), [sessionData])
   const selectedFile = sessionData?.assemblyFiles.find((file) => file.path === selectedPath) ?? null
+  const selectedFileLineCount = selectedFile ? getLineCount(selectedFile.content) : 0
 
   const toggleDirectory = (directoryPath: string) => {
     setExpandedPaths((currentPaths) => {
@@ -151,11 +158,19 @@ export default function JavaAssemblyViewer() {
             <button
               type="button"
               onClick={() => toggleDirectory(node.path)}
-              className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent"
-              style={{ paddingLeft: `${depth * 16 + 8}px` }}
+              className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm text-foreground transition hover:bg-muted"
+              style={{ paddingLeft: `${depth * 16 + 12}px` }}
             >
-              {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-              {isExpanded ? <FolderOpen className="h-4 w-4 text-amber-500" /> : <Folder className="h-4 w-4 text-amber-500" />}
+              {isExpanded ? (
+                <ChevronDown className="h-4 w-4 text-muted-foreground" />
+              ) : (
+                <ChevronRight className="h-4 w-4 text-muted-foreground" />
+              )}
+              {isExpanded ? (
+                <FolderOpen className="h-4 w-4 text-amber-600" />
+              ) : (
+                <Folder className="h-4 w-4 text-amber-600" />
+              )}
               <span className="truncate">{node.name}</span>
             </button>
 
@@ -164,17 +179,21 @@ export default function JavaAssemblyViewer() {
         )
       }
 
+      const isSelected = selectedPath === node.path
+
       return (
         <button
           key={node.path}
           type="button"
           onClick={() => setSelectedPath(node.path)}
-          className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm ${
-            selectedPath === node.path ? "bg-primary/10 text-primary" : "hover:bg-accent"
+          className={`flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm transition ${
+            isSelected
+              ? "bg-primary/10 text-primary"
+              : "text-foreground hover:bg-muted"
           }`}
-          style={{ paddingLeft: `${depth * 16 + 28}px` }}
+          style={{ paddingLeft: `${depth * 16 + 32}px` }}
         >
-          <FileCode2 className="h-4 w-4 shrink-0" />
+          <FileCode2 className={`h-4 w-4 shrink-0 ${isSelected ? "text-primary" : "text-muted-foreground"}`} />
           <span className="truncate">{node.name}</span>
         </button>
       )
@@ -182,86 +201,204 @@ export default function JavaAssemblyViewer() {
 
   if (!sessionData || sessionData.assemblyFiles.length === 0) {
     return (
-      <Alert>
-        <AlertTitle>No Assembly Available</AlertTitle>
-        <AlertDescription className="space-y-4">
-          <p>Compile the current workspace first, then open the viewer in the same tab to inspect the generated assembly.</p>
-          <Button asChild variant="outline">
-            <Link href="/projects/java-compiler">
-              <ArrowLeft className="h-4 w-4" />
-              Back to Compiler
-            </Link>
-          </Button>
-        </AlertDescription>
-      </Alert>
+      <section className="overflow-hidden rounded-[24px] border bg-card text-card-foreground shadow-sm">
+        <div className="border-b bg-muted/30 px-6 py-6">
+          <h1 className="text-2xl font-semibold">Assembly Explorer</h1>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
+            Compile the workspace in this same tab first. The viewer reads the latest generated assembly snapshot from
+            session storage.
+          </p>
+        </div>
+
+        <div className="p-6">
+          <Alert>
+            <AlertTitle>No assembly snapshot available</AlertTitle>
+            <AlertDescription className="space-y-4">
+              <p>Run a compile from the editor, then reopen this view to browse the generated output tree.</p>
+              <Button asChild className="rounded-xl">
+                <Link href="/projects/java-compiler">
+                  <ArrowLeft className="h-4 w-4" />
+                  Back to Compiler
+                </Link>
+              </Button>
+            </AlertDescription>
+          </Alert>
+        </div>
+      </section>
     )
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div className="space-y-2">
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="secondary">{sessionData.assemblyFiles.length} assembly files</Badge>
-            <Badge variant="secondary">{sessionData.sourceFiles.length} source files</Badge>
-          </div>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Clock3 className="h-4 w-4" />
-            <span>Generated {new Date(sessionData.generatedAt).toLocaleString()}</span>
+      <section className="overflow-hidden rounded-[24px] border bg-card text-card-foreground shadow-sm">
+        <div className="border-b bg-muted/30 px-6 py-6">
+          <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
+            <div className="space-y-4">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge className="border-border bg-background text-muted-foreground" variant="outline">
+                  Monaco viewer
+                </Badge>
+                <Badge className="border-border bg-background text-muted-foreground" variant="outline">
+                  Read-only assembly
+                </Badge>
+                <Badge className="border-border bg-background text-muted-foreground" variant="outline">
+                  Explorer tree
+                </Badge>
+              </div>
+              <div>
+                <h1 className="text-2xl font-semibold md:text-3xl">Assembly Explorer</h1>
+                <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground md:text-base">
+                  Inspect every generated <code>output/**/*.s</code> file from the latest joosc compile in this tab,
+                  switch between files from the explorer, and copy any assembly buffer directly from Monaco.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="rounded-2xl border bg-background px-4 py-3">
+                <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Files</p>
+                <p className="mt-2 text-2xl font-semibold">{sessionData.assemblyFiles.length}</p>
+                <p className="text-xs text-muted-foreground">assembly outputs</p>
+              </div>
+              <div className="rounded-2xl border bg-background px-4 py-3">
+                <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Generated</p>
+                <div className="mt-2 flex items-center gap-2 text-sm">
+                  <Clock3 className="h-4 w-4 text-muted-foreground" />
+                  <span>{new Date(sessionData.generatedAt).toLocaleString()}</span>
+                </div>
+              </div>
+              <Button
+                asChild
+                variant="outline"
+                className="rounded-xl"
+              >
+                <Link href="/projects/java-compiler">
+                  <ArrowLeft className="h-4 w-4" />
+                  Back to Compiler
+                </Link>
+              </Button>
+            </div>
           </div>
         </div>
 
-        <Button asChild variant="outline">
-          <Link href="/projects/java-compiler">
-            <ArrowLeft className="h-4 w-4" />
-            Back to Compiler
-          </Link>
-        </Button>
-      </div>
+        <div className="grid xl:grid-cols-[320px_minmax(0,1fr)]">
+          <aside className="border-b bg-muted/20 xl:border-b-0 xl:border-r">
+            <div className="border-b px-5 py-4">
+              <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Explorer</p>
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                Generated assembly files from the latest compile are grouped exactly by their output paths.
+              </p>
+            </div>
 
-      <div className="grid gap-6 lg:grid-cols-[300px_minmax(0,1fr)]">
-        <Card className="overflow-hidden">
-          <CardHeader className="border-b">
-            <CardTitle>Explorer</CardTitle>
-            <CardDescription>Generated assembly files from the latest compile in this tab.</CardDescription>
-          </CardHeader>
-          <CardContent className="max-h-[75vh] overflow-auto p-3">{renderTreeNodes(fileTree)}</CardContent>
-        </Card>
+            <div className="max-h-[720px] overflow-y-auto px-3 py-4">{renderTreeNodes(fileTree)}</div>
+          </aside>
 
-        <div className="space-y-6">
-          <Card className="overflow-hidden">
-            <CardHeader className="border-b">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <CardTitle className="truncate">{selectedFile?.path ?? "Select a file"}</CardTitle>
-                  <CardDescription>Read-only assembly output. Use the explorer to switch files.</CardDescription>
+          <div className="min-w-0 bg-background">
+            <div className="border-b px-5 py-4">
+              <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+                <div className="space-y-3">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge className="border-border bg-background text-foreground" variant="outline">
+                      {selectedFile?.path ?? "Select a file"}
+                    </Badge>
+                    <Badge className="border-border bg-background text-muted-foreground" variant="outline">
+                      {selectedFileLineCount} lines
+                    </Badge>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Read-only Monaco surface for the selected assembly file.
+                  </p>
                 </div>
-                <Button type="button" variant="outline" onClick={copySelectedFile} disabled={!selectedFile}>
+
+                <Button
+                  type="button"
+                  onClick={copySelectedFile}
+                  disabled={!selectedFile}
+                  className="rounded-xl"
+                >
                   {copiedPath === selectedFile?.path ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                   {copiedPath === selectedFile?.path ? "Copied" : "Copy File"}
                 </Button>
               </div>
-            </CardHeader>
-            <CardContent className="p-0">
-              <pre className="h-[75vh] overflow-auto bg-slate-950 p-4 font-mono text-sm leading-6 text-slate-100">
-                {selectedFile?.content ?? "Select a file from the explorer to view its contents."}
-              </pre>
-            </CardContent>
-          </Card>
+            </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Compiler Log</CardTitle>
-              <CardDescription>Latest bin/joosc command output for this assembly snapshot.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <pre className="max-h-[240px] overflow-auto whitespace-pre-wrap break-words rounded-lg bg-slate-950 p-4 font-mono text-sm leading-6 text-slate-100">
-                {sessionData.compilerLog || "No compiler output was returned."}
-              </pre>
-            </CardContent>
-          </Card>
+            <div className="px-4 py-4">
+              <div className="overflow-hidden rounded-[20px] border border-zinc-800 bg-[#1E1E1E] shadow-sm">
+                <div className="flex items-center justify-between border-b border-zinc-800 bg-[#252526] px-4 py-3">
+                  <div className="flex items-center gap-3">
+                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-700/60 text-zinc-200">
+                      <FileCode2 className="h-4 w-4" />
+                    </span>
+                    <div>
+                      <p className="text-sm font-medium text-zinc-100">{selectedFile?.path ?? "No file selected"}</p>
+                      <p className="text-xs text-zinc-400">Monaco assembly buffer with custom syntax colors.</p>
+                    </div>
+                  </div>
+                  <p className="hidden text-xs uppercase tracking-[0.2em] text-zinc-500 md:block">Assembly</p>
+                </div>
+
+                <MonacoCodeSurface
+                  path={selectedFile ? `assembly://${selectedFile.path}` : "assembly://empty.s"}
+                  language="joosc-assembly"
+                  value={selectedFile?.content ?? "Select a file from the explorer to inspect its assembly output."}
+                  readOnly
+                  height={720}
+                  options={{
+                    lineNumbersMinChars: 3,
+                    overviewRulerBorder: false,
+                    scrollbar: {
+                      horizontalScrollbarSize: 10,
+                      verticalScrollbarSize: 10,
+                    },
+                    stickyScroll: {
+                      enabled: false,
+                    },
+                  }}
+                />
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
+      </section>
+
+      <section className="overflow-hidden rounded-[24px] border bg-card text-card-foreground shadow-sm">
+        <div className="border-b px-5 py-4">
+          <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Compiler log</p>
+          <h2 className="mt-2 text-lg font-semibold">Latest joosc output</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            This is the exact log stored alongside the assembly snapshot for the current tab session.
+          </p>
+        </div>
+
+        <div className="p-4">
+          <div className="overflow-hidden rounded-[20px] border border-zinc-800 bg-[#1E1E1E] shadow-sm">
+            <div className="border-b border-zinc-800 bg-[#252526] px-4 py-2 text-xs uppercase tracking-[0.2em] text-zinc-400">
+              Console
+            </div>
+            <div className="bg-[#252526] p-3">
+              <MonacoCodeSurface
+                className="monaco-content-inset overflow-hidden rounded-[14px] border border-zinc-700"
+                path="compiler-log.txt"
+                language="plaintext"
+                value={sessionData.compilerLog || "No compiler output was returned."}
+                readOnly
+                height={232}
+                options={{
+                  folding: false,
+                  lineNumbers: "off",
+                  lineDecorationsWidth: 0,
+                  renderLineHighlight: "none",
+                  scrollbar: {
+                    horizontalScrollbarSize: 10,
+                    verticalScrollbarSize: 10,
+                  },
+                  wordWrap: "on",
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      </section>
     </div>
   )
 }

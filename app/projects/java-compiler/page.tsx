@@ -5,25 +5,26 @@ import JavaCompilerSandbox from "@/components/java-compiler-sandbox"
 export const metadata: Metadata = {
   title: "Java 1.3 Compiler | Dev Narula",
   description:
-    "Write multiple Java source files, compile them with joosc, and browse the generated assembly tree in a file explorer-style viewer.",
+    "Write multiple Java source files in a Monaco-powered workspace, compile them with joosc, and browse the generated assembly tree in a dedicated explorer.",
 }
 
 export default function JavaCompilerPage() {
   return (
-    <div className="container max-w-6xl py-8 md:py-12 mx-auto space-y-8">
+    <div className="container mx-auto max-w-7xl space-y-8 py-8 md:py-12">
       <div className="space-y-4 text-center">
         <div className="flex flex-wrap items-center justify-center gap-2">
-          <Badge variant="secondary">Multi-file workspace</Badge>
+          <Badge variant="secondary">Monaco editor</Badge>
           <Badge variant="secondary">joosc pipeline</Badge>
-          <Badge variant="secondary">Assembly viewer</Badge>
+          <Badge variant="secondary">Assembly explorer</Badge>
         </div>
         <div className="space-y-3">
           <h1 className="text-3xl md:text-4xl font-bold">Java 1.3 Compiler</h1>
           <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
-            Create multiple <code className="rounded bg-muted px-1.5 py-0.5 text-sm">.java</code> files and run a
-            server-side <code className="rounded bg-muted px-1.5 py-0.5 text-sm">bin/joosc</code> compile inside an
-            isolated temp workspace, then inspect the generated <code className="rounded bg-muted px-1.5 py-0.5 text-sm">output/**/*.s</code> files
-            in a dedicated explorer-style viewer.
+            Create multiple <code className="rounded bg-muted px-1.5 py-0.5 text-sm">.java</code> files in a Monaco
+            workspace, run a server-side <code className="rounded bg-muted px-1.5 py-0.5 text-sm">bin/joosc</code>{" "}
+            compile inside an isolated temp workspace, then inspect the generated{" "}
+            <code className="rounded bg-muted px-1.5 py-0.5 text-sm">output/**/*.s</code> files in a dedicated
+            explorer-style viewer.
           </p>
           <p className="text-sm text-muted-foreground max-w-3xl mx-auto">
             The build expects <code className="rounded bg-muted px-1.5 py-0.5 text-sm">bin/joosc</code> plus

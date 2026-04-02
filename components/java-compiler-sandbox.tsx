@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import {
   AlertCircle,
@@ -14,13 +14,12 @@ import {
   Shield,
   Trash2,
 } from "lucide-react"
+import MonacoCodeSurface from "@/components/monaco-code-surface"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 import {
   JAVA_COMPILER_ASSEMBLY_STORAGE_KEY,
@@ -53,7 +52,7 @@ const createStarterFiles = (): SourceFile[] => [
 }
 
 `,
-  }
+  },
 ]
 
 const createFileId = () => `file-${Math.random().toString(36).slice(2, 10)}`
@@ -111,6 +110,25 @@ function saveAssemblySessionToStorage(files: SourceFile[], response: JavaCompile
   window.sessionStorage.setItem(JAVA_COMPILER_ASSEMBLY_STORAGE_KEY, JSON.stringify(session))
 }
 
+function getLineCount(content: string) {
+  return content.split("\n").length
+}
+
+function formatAssemblyManifest(response: JavaCompilerResponse | null) {
+  if (!response || response.assemblyFiles.length === 0) {
+    return [
+      "Compile the workspace to generate output/**/*.s files.",
+      "",
+      "The newest assembly snapshot will appear here and can be opened",
+      "in the dedicated explorer page for full browsing and copying.",
+    ].join("\n")
+  }
+
+  return response.assemblyFiles
+    .map((file, index) => `${String(index + 1).padStart(2, "0")}. ${file.path}`)
+    .join("\n")
+}
+
 export default function JavaCompilerSandbox() {
   const router = useRouter()
   const [files, setFiles] = useState<SourceFile[]>(() => createStarterFiles())
@@ -124,6 +142,10 @@ export default function JavaCompilerSandbox() {
   const [hasStoredAssembly, setHasStoredAssembly] = useState(false)
 
   const activeFile = files.find((file) => file.id === activeFileId) ?? files[0]
+  const activeFileLineCount = useMemo(() => getLineCount(activeFile?.content ?? ""), [activeFile?.content])
+  const activeFileCharacterCount = activeFile?.content.length ?? 0
+  const compilerLogValue = result?.compilerLog || "Compile the workspace to see bin/joosc diagnostics here."
+  const assemblyManifestValue = useMemo(() => formatAssemblyManifest(result), [result])
 
   useEffect(() => {
     const draft = parseJavaCompilerDraft(window.localStorage.getItem(JAVA_COMPILER_DRAFT_STORAGE_KEY))
@@ -292,47 +314,112 @@ export default function JavaCompilerSandbox() {
   return (
     <div className="space-y-6">
       {(error || message) && (
-        <Alert variant={error ? "destructive" : "default"}>
+        <Alert
+          variant={error ? "destructive" : "default"}
+          className={cn(
+            "border shadow-sm",
+            !error && "border-emerald-200 bg-emerald-50 text-emerald-950 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-100",
+          )}
+        >
           {error ? <AlertCircle className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />}
           <AlertTitle>{error ? "Compiler issue" : "Workspace updated"}</AlertTitle>
           <AlertDescription>{error ?? message}</AlertDescription>
         </Alert>
       )}
 
-      <Card className="overflow-hidden shadow-lg">
-        <CardContent className="p-0">
-          <div className="grid lg:grid-cols-[260px_minmax(0,1fr)]">
-            <aside className="border-b bg-muted/20 lg:border-b-0 lg:border-r">
-              <div className="border-b px-4 py-4">
-                <p className="text-sm font-semibold">Workspace Files</p>
-                <p className="text-sm text-muted-foreground">
-                  Create up to {MAX_FILES} source files. Drafts are saved in your browser automatically.
+      <section className="overflow-hidden rounded-[24px] border bg-card text-card-foreground shadow-sm">
+        <div className="border-b bg-muted/30 px-6 py-6">
+          <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
+            <div className="space-y-4">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge className="border-border bg-background text-muted-foreground" variant="outline">
+                  Monaco workspace
+                </Badge>
+                <Badge className="border-border bg-background text-muted-foreground" variant="outline">
+                  joosc pipeline
+                </Badge>
+                <Badge className="border-border bg-background text-muted-foreground" variant="outline">
+                  output/**/*.s
+                </Badge>
+              </div>
+              <div className="space-y-2">
+                <h2 className="text-2xl font-semibold tracking-tight md:text-3xl">Compiler Workspace</h2>
+                <p className="max-w-3xl text-sm leading-6 text-muted-foreground md:text-base">
+                  Write joosc-compatible Java in a multi-file workspace, compile it inside an isolated temp
+                  environment, and move straight into the generated assembly explorer without leaving this flow.
                 </p>
               </div>
+            </div>
 
-              <div className="space-y-2 p-4">
-                {files.map((file) => (
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div className="rounded-2xl border bg-background px-4 py-3">
+                <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Files</p>
+                <p className="mt-2 text-2xl font-semibold">{files.length}</p>
+                <p className="text-xs text-muted-foreground">Up to {MAX_FILES} source files</p>
+              </div>
+              <div className="rounded-2xl border bg-background px-4 py-3">
+                <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Selection</p>
+                <p className="mt-2 text-lg font-semibold">{activeFileLineCount} lines</p>
+                <p className="text-xs text-muted-foreground">{activeFileCharacterCount} characters</p>
+              </div>
+              <div className="rounded-2xl border bg-background px-4 py-3">
+                <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Latest Build</p>
+                <p className="mt-2 text-lg font-semibold">{generatedAssemblyCount}</p>
+                <p className="text-xs text-muted-foreground">assembly files ready</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid xl:grid-cols-[290px_minmax(0,1fr)]">
+          <aside className="border-b bg-muted/20 xl:border-b-0 xl:border-r">
+            <div className="border-b px-5 py-4">
+              <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Workspace files</p>
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                Drafts are persisted in this browser. Click any file to swap Monaco models instantly.
+              </p>
+            </div>
+
+            <div className="max-h-[420px] space-y-2 overflow-y-auto px-4 py-4">
+              {files.map((file) => {
+                const isActive = file.id === activeFileId
+
+                return (
                   <div
                     key={file.id}
                     className={cn(
-                      "flex items-center gap-2 rounded-lg border px-3 py-2 transition-colors",
-                      file.id === activeFileId ? "border-primary bg-primary/5" : "border-transparent bg-background",
+                      "group flex items-center gap-3 rounded-2xl border px-3 py-3 transition-all",
+                      isActive
+                        ? "border-primary/25 bg-primary/5"
+                        : "bg-background hover:border-primary/20 hover:bg-muted/40",
                     )}
                   >
                     <button
                       type="button"
                       onClick={() => setActiveFileId(file.id)}
-                      className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                      className="flex min-w-0 flex-1 items-center gap-3 text-left"
                     >
-                      <FileCode2 className="h-4 w-4 shrink-0 text-muted-foreground" />
-                      <span className="truncate text-sm font-medium">{file.name}</span>
+                      <span
+                        className={cn(
+                          "flex h-10 w-10 items-center justify-center rounded-xl border",
+                          isActive
+                            ? "border-primary/20 bg-primary/10 text-primary"
+                            : "border-border bg-background text-muted-foreground",
+                        )}
+                      >
+                        <FileCode2 className="h-4 w-4" />
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block truncate text-sm font-medium">{file.name}</span>
+                        <span className="block text-xs text-muted-foreground">{getLineCount(file.content)} lines</span>
+                      </span>
                     </button>
 
                     <Button
                       type="button"
                       variant="ghost"
                       size="icon"
-                      className="h-7 w-7 shrink-0"
+                      className="h-8 w-8 shrink-0 rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground"
                       onClick={() => handleDeleteFile(file.id)}
                       disabled={isRunning}
                       aria-label={`Delete ${file.name}`}
@@ -340,46 +427,71 @@ export default function JavaCompilerSandbox() {
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
-                ))}
+                )
+              })}
+            </div>
+
+            <div className="border-t px-5 py-5">
+              <div className="space-y-2">
+                <Label htmlFor="new-file-name" className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                  Add file
+                </Label>
+                <Input
+                  id="new-file-name"
+                  placeholder="Helper.java"
+                  value={newFileName}
+                  onChange={(event) => setNewFileName(event.target.value)}
+                  disabled={isRunning}
+                  className="h-11 rounded-xl"
+                />
               </div>
 
-              <div className="border-t px-4 py-4 space-y-3">
-                <div className="space-y-2">
-                  <Label htmlFor="new-file-name">New file</Label>
-                  <Input
-                    id="new-file-name"
-                    placeholder="Helper.java"
-                    value={newFileName}
-                    onChange={(event) => setNewFileName(event.target.value)}
-                    disabled={isRunning}
-                  />
+              <Button
+                type="button"
+                variant="outline"
+                className="mt-3 w-full rounded-xl"
+                onClick={handleCreateFile}
+                disabled={isRunning}
+              >
+                <Plus className="h-4 w-4" />
+                Add Source File
+              </Button>
+
+              <p className="mt-3 text-xs leading-5 text-muted-foreground">
+                Use simple names like <code>Main.java</code>. All files stay in the default package for joosc.
+              </p>
+            </div>
+          </aside>
+
+          <div className="min-w-0 bg-background">
+            <div className="border-b px-5 py-4">
+              <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+                <div className="space-y-3">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge className="border-border bg-background text-foreground" variant="outline">
+                      {activeFile?.name ?? "No file selected"}
+                    </Badge>
+                    <Badge className="border-border bg-background text-muted-foreground" variant="outline">
+                      Default package
+                    </Badge>
+                    <Badge className="border-border bg-background text-muted-foreground" variant="outline">
+                      bin/joosc
+                    </Badge>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-muted-foreground">
+                    <span>{activeFileLineCount} lines</span>
+                    <span>{activeFileCharacterCount} characters</span>
+                    <span>{files.length} files in workspace</span>
+                  </div>
                 </div>
 
-                <Button type="button" variant="outline" className="w-full" onClick={handleCreateFile} disabled={isRunning}>
-                  <Plus className="h-4 w-4" />
-                  Add File
-                </Button>
-              </div>
-            </aside>
-
-            <section className="flex min-h-[640px] flex-col">
-              <div className="border-b bg-muted/20 px-4 py-4">
-                <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_220px_auto_auto] xl:items-end">
-                  <div>
-                    <p className="text-sm font-semibold">Editing</p>
-                    <div className="mt-2 flex flex-wrap items-center gap-2">
-                      <Badge variant="outline">{activeFile?.name ?? "No file selected"}</Badge>
-                      <Badge variant="outline">Default package only</Badge>
-                      <Badge variant="outline">Assembly output under output/</Badge>
-                    </div>
-                  </div>
-
-                  <div className="rounded-lg border bg-background px-3 py-2">
-                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Pipeline</p>
-                    <p className="mt-1 text-sm font-medium">bin/joosc -&gt; output/**/*.s</p>
-                  </div>
-
-                  <Button type="button" className="w-full xl:w-auto" onClick={handleCompile} disabled={isRunning}>
+                <div className="flex flex-wrap items-center gap-3">
+                  <Button
+                    type="button"
+                    className="rounded-xl px-4"
+                    onClick={handleCompile}
+                    disabled={isRunning}
+                  >
                     {isRunning ? (
                       <>
                         <Loader2 className="h-4 w-4 animate-spin" />
@@ -396,7 +508,7 @@ export default function JavaCompilerSandbox() {
                   <Button
                     type="button"
                     variant="outline"
-                    className="w-full xl:w-auto"
+                    className="rounded-xl"
                     onClick={handleReset}
                     disabled={isRunning}
                   >
@@ -405,88 +517,154 @@ export default function JavaCompilerSandbox() {
                   </Button>
                 </div>
               </div>
+            </div>
 
-              <div className="border-b px-4 py-3">
-                <p className="text-sm font-semibold">{activeFile?.name ?? "Source file"}</p>
-                <p className="text-sm text-muted-foreground">
-                  Write joosc-compatible Java source here, compile it, then inspect the generated assembly in the viewer.
-                </p>
-              </div>
+            <div className="px-4 py-4">
+              <div className="overflow-hidden rounded-[20px] border border-zinc-800 bg-[#1E1E1E] shadow-sm">
+                <div className="flex items-center justify-between border-b border-zinc-800 bg-[#252526] px-4 py-3">
+                  <div className="flex items-center gap-3">
+                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-700/60 text-zinc-200">
+                      <FileCode2 className="h-4 w-4" />
+                    </span>
+                    <div>
+                      <p className="text-sm font-medium text-zinc-100">{activeFile?.name ?? "Source file"}</p>
+                      <p className="text-xs text-zinc-400">Monaco Java editor with per-file state retention.</p>
+                    </div>
+                  </div>
+                  <p className="hidden text-xs uppercase tracking-[0.2em] text-zinc-500 md:block">Source</p>
+                </div>
 
-              <div className="flex-1 bg-slate-950">
-                <Textarea
+                <MonacoCodeSurface
+                  path={activeFile?.name}
+                  language="java"
                   value={activeFile?.content ?? ""}
-                  onChange={(event) => updateActiveFileContent(event.target.value)}
-                  className="min-h-[460px] rounded-none border-0 bg-transparent px-4 py-4 font-mono text-[13px] leading-6 text-slate-100 shadow-none focus-visible:ring-0"
-                  spellCheck={false}
-                  disabled={isRunning || !activeFile}
+                  onChange={updateActiveFileContent}
+                  readOnly={isRunning || !activeFile}
+                  height={640}
+                  options={{
+                    lineNumbersMinChars: 3,
+                    overviewRulerBorder: false,
+                    quickSuggestions: !isRunning,
+                    scrollbar: {
+                      horizontalScrollbarSize: 10,
+                      verticalScrollbarSize: 10,
+                    },
+                    stickyScroll: {
+                      enabled: false,
+                    },
+                  }}
                 />
               </div>
-            </section>
+            </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </section>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card className="shadow-sm">
-          <CardHeader>
-            <CardTitle>Build Log</CardTitle>
-            <CardDescription>bin/joosc output and compile diagnostics.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <pre className="min-h-[240px] whitespace-pre-wrap break-words rounded-lg bg-slate-950 p-4 font-mono text-sm leading-6 text-slate-100">
-              {result?.compilerLog ?? "Compile the workspace to see joosc output here."}
-            </pre>
-          </CardContent>
-        </Card>
-
-        <Card className="shadow-sm">
-          <CardHeader>
-            <CardTitle>Generated Assembly</CardTitle>
-            <CardDescription>Open the explorer page to browse the latest generated assembly tree.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {generatedAssemblyCount > 0 ? (
-              <>
-                <div className="flex items-center justify-between gap-4 rounded-lg border bg-muted/20 px-4 py-3">
-                  <div>
-                    <p className="text-sm font-semibold">{generatedAssemblyCount} file{generatedAssemblyCount === 1 ? "" : "s"} ready</p>
-                    <p className="text-sm text-muted-foreground">
-                      Stored in this tab's session for the assembly viewer.
-                    </p>
-                  </div>
-                  <Button type="button" onClick={handleViewAssembly} disabled={!hasStoredAssembly}>
-                    <FolderTree className="h-4 w-4" />
-                    View Assembly
-                  </Button>
-                </div>
-
-                <div className="space-y-2">
-                  {result?.assemblyFiles.slice(0, 6).map((file) => (
-                    <div
-                      key={file.path}
-                      className="rounded-md border px-3 py-2 font-mono text-sm text-muted-foreground"
-                    >
-                      {file.path}
-                    </div>
-                  ))}
-                </div>
-              </>
-            ) : (
-              <div className="rounded-lg border border-dashed px-4 py-6 text-sm text-muted-foreground">
-                Compile the workspace to generate `output/**/*.s` files and open them in the assembly viewer.
+      <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+        <section className="overflow-hidden rounded-[24px] border bg-card text-card-foreground shadow-sm">
+          <div className="border-b px-5 py-4">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Compiler log</p>
+                <h3 className="mt-2 text-lg font-semibold">bin/joosc diagnostics</h3>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Success and failure output from the latest compile request.
+                </p>
               </div>
-            )}
-          </CardContent>
-        </Card>
+              <Badge className="border-border bg-background text-muted-foreground" variant="outline">
+                {isRunning ? "running" : "idle"}
+              </Badge>
+            </div>
+          </div>
+
+          <div className="p-4">
+            <div className="overflow-hidden rounded-[20px] border border-zinc-800 bg-[#1E1E1E] shadow-sm">
+              <div className="border-b border-zinc-800 bg-[#252526] px-4 py-2 text-xs uppercase tracking-[0.2em] text-zinc-400">
+                Console
+              </div>
+              <div className="bg-[#252526] p-3">
+                <MonacoCodeSurface
+                  className="monaco-content-inset overflow-hidden rounded-[14px] border border-zinc-700"
+                  path="compiler-log.txt"
+                  language="plaintext"
+                  value={compilerLogValue}
+                  readOnly
+                  height={252}
+                  options={{
+                    folding: false,
+                    lineNumbers: "off",
+                    lineDecorationsWidth: 0,
+                    renderLineHighlight: "none",
+                    scrollbar: {
+                      horizontalScrollbarSize: 10,
+                      verticalScrollbarSize: 10,
+                    },
+                    wordWrap: "on",
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="overflow-hidden rounded-[24px] border bg-card text-card-foreground shadow-sm">
+          <div className="border-b px-5 py-4">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Assembly snapshot</p>
+                <h3 className="mt-2 text-lg font-semibold">Generated file manifest</h3>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  The latest assembly tree is cached in this tab and opens in a dedicated explorer page.
+                </p>
+              </div>
+              <Button
+                type="button"
+                onClick={handleViewAssembly}
+                disabled={!hasStoredAssembly}
+                className="rounded-xl px-4"
+              >
+                <FolderTree className="h-4 w-4" />
+                View Assembly
+              </Button>
+            </div>
+          </div>
+
+          <div className="p-4">
+            <div className="overflow-hidden rounded-[20px] border border-zinc-800 bg-[#1E1E1E] shadow-sm">
+              <div className="border-b border-zinc-800 bg-[#252526] px-4 py-2 text-xs uppercase tracking-[0.2em] text-zinc-400">
+                Output files
+              </div>
+              <div className="bg-[#252526] p-3">
+                <MonacoCodeSurface
+                  className="monaco-content-inset overflow-hidden rounded-[14px] border border-zinc-700"
+                  path="assembly-manifest.txt"
+                  language="plaintext"
+                  value={assemblyManifestValue}
+                  readOnly
+                  height={252}
+                  options={{
+                    folding: false,
+                    lineNumbers: "off",
+                    lineDecorationsWidth: 0,
+                    renderLineHighlight: "none",
+                    scrollbar: {
+                      horizontalScrollbarSize: 10,
+                      verticalScrollbarSize: 10,
+                    },
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+        </section>
       </div>
 
-      <Alert>
+      <Alert className="border-slate-200 bg-slate-50/80 text-slate-900 dark:border-slate-800 dark:bg-slate-950/40 dark:text-slate-100">
         <Shield className="h-4 w-4" />
         <AlertTitle>Browser persistence</AlertTitle>
         <AlertDescription>
-          Java source files are stored in <code>localStorage</code> so drafts survive refreshes. The latest generated
-          assembly tree is stored in <code>sessionStorage</code> for the dedicated viewer page in this tab.
+          Source drafts live in <code>localStorage</code> so they survive refreshes. The most recent generated
+          assembly tree is cached in <code>sessionStorage</code> for the dedicated viewer route in this tab.
         </AlertDescription>
       </Alert>
     </div>
