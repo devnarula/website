@@ -5,11 +5,11 @@ import rehypeKatex from 'rehype-katex';
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  experimental: {
-    appDir: true,
-  },
   // let Next treat .mdx as pages/components
   pageExtensions: ['ts', 'tsx', 'mdx'],
+  outputFileTracingIncludes: {
+    '/api/java-compiler': ['./bin/**/*'],
+  },
 };
 
 export default withMDX({

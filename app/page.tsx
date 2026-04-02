@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { FileText, ArrowRight, Lock, Cpu, Box} from 'lucide-react';
+import { FileText, ArrowRight, Lock, Cpu, Box, FileCode2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 import { Badge } from '@/components/ui/badge';
@@ -26,6 +26,14 @@ export default function Home() {
       href: "/projects/cipher-tool",
       icon: <Cpu className="h-6 w-6 text-muted-foreground/70" />,
       tags: ["Microarchitecture", "C++", "Cache Policies"],
+    },
+    {
+      title: "Java 1.3 Compiler",
+      description:
+        "A sandboxed multi-file Java workspace that runs a joosc compiler pipeline and shows assembler, linker, and program output in the browser workflow.",
+      href: "/projects/java-compiler",
+      icon: <FileCode2 className="h-6 w-6 text-muted-foreground/70" />,
+      tags: ["Java", "joosc", "Compiler"],
     },
     {
       title: "Distributed File Storage",
