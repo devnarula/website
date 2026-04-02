@@ -53,20 +53,7 @@ const createStarterFiles = (): SourceFile[] => [
 }
 
 `,
-  },
-  {
-    id: "greeter",
-    name: "Greeter.java",
-    content: `public class Greeter {
-    public Greeter() {}
-
-    public static int f() {
-        return 0;
-    }
-}
-
-`,
-  },
+  }
 ]
 
 const createFileId = () => `file-${Math.random().toString(36).slice(2, 10)}`
