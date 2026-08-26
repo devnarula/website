@@ -44,7 +44,14 @@ export default function Home() {
       tags: ["Distributed Systems", "Infrastructure", "C++"],
     },
   ];
-
+  const metaItems = [
+    'Engineered probabilistic demotion algorithms in C++ for Faceboo\'s multifeed recommendation system to adjust content ranking based on diversity metrics.',
+    'Extended the late-stage ranking infrastructure to allow real-time model tuning for user recommendations.',
+    'Performed A/B tests by introducing the new models to 65M+ facebook users'
+  ];
+  const databricksItems = [
+    'Developing a logger for envoy in Rust serving 10+ services across 2k+ customers.'
+  ];
   const bitgoItems = [
     'Leveraged FP-TS to orchestrate off-exchange settlements with third-party venues ensuring referential transparency, composable validation, and safe side-effect handling.',
     'Engineered a dispute resolution engine for asset trading with external exchanges validating client deposits against internal ledgers, reducing transfer errors by 40%.',
@@ -247,11 +254,14 @@ export default function Home() {
                 <h3 className="text-xl font-bold mb-4">Skills</h3>
                 <div className="flex flex-wrap gap-2">
                   <Badge>C++</Badge>
+                  <Badge>Rust</Badge>
                   <Badge>Python</Badge>
-                  <Badge>TypeScript (Fp-TS)</Badge>
+                  <Badge>Java</Badge>
+                  <Badge>Envoy</Badge>
+
+                  <Badge>FP-TS</Badge>
                   <Badge>Kubernetes</Badge>
                   <Badge>AWS</Badge>
-                  <Badge>Java</Badge>
                   <Badge>Docker</Badge>
                 </div>
               </div>
@@ -259,11 +269,19 @@ export default function Home() {
                 <ExperienceTimeline
                   items={[
                     {
+                      company: 'Databricks',
+                      role: 'Software Engineer',
+                      period: 'Present',
+                      logo: '/logos/db.png?height=32&width=32',
+                      skills: ['Rust', 'Envoy'],
+                    },
+
+                    {
                       company: 'Meta',
                       role: 'Software Engineering Intern',
                       period: 'Fall 2025',
                       logo: '/logos/meta.png?height=32&width=32',
-                      skills: ['Software Development'],
+                      skills: ['C++', 'Recommendations'],
                     },
                     {
                       company: 'BitGo',
@@ -309,6 +327,16 @@ export default function Home() {
               <h3 className="text-xl font-bold mb-4">Experiences</h3>
               <div className="space-y-6">
                 <div className="space-y-12">
+                  <ExperienceSection
+                    title="Software Engineer"
+                    subtitle="Databricks • Present"
+                    items={databricksItems}
+                  />
+                    <ExperienceSection
+                    title="Software Engineering Intern"
+                    subtitle="Meta • Fall 2026"
+                    items={metaItems}
+                  />
                   <ExperienceSection
                     title="Software Engineering Intern"
                     subtitle="BitGo • Winter 2025"
