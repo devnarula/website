@@ -243,9 +243,9 @@ export default function Home() {
                   <div>
                     <h4 className="font-medium">Bachelor of Computer Science</h4>
                     <p className="text-sm text-muted-foreground">
-                      University of Waterloo • 2021 - 2026 (Anticipated)
+                      University of Waterloo • 2021 - 2026
                     </p>
-                    <p className="text-sm mt-1">GPA: 87.77%</p>
+                    <p className="text-sm mt-1">GPA: 88.8%</p>
                   </div>
                 </div>
               </div>
